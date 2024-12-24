@@ -1,0 +1,144 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue",
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/register/index",
+      "style": {
+        "navigationBarTitleText": "注册账号"
+      }
+    },
+    {
+      "path": "pages/forgot-password/index",
+      "style": {
+        "navigationBarTitleText": "忘记密码"
+      }
+    },
+    {
+      "path": "pages/student/PersonalInfo",
+      "style": {
+        "navigationBarTitleText": "信息管理",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/student/EquipmentApplication",
+      "style": {
+        "navigationBarTitleText": "器材申请",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/student/HomeworkUpload",
+      "style": {
+        "navigationBarTitleText": "作业上传",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/guest/GuestInfo",
+      "style": {
+        "navigationBarTitleText": "信息管理",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/teacher/UserManagement",
+      "style": {
+        "navigationBarTitleText": "用户管理",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/teacher/HomeworkManagement",
+      "style": {
+        "navigationBarTitleText": "作业管理",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/teacher/equipment/Store",
+      "style": {
+        "navigationBarTitleText": "器材入库",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/teacher/equipment/Borrow",
+      "style": {
+        "navigationBarTitleText": "器材外借",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/teacher/equipment/Inventory",
+      "style": {
+        "navigationBarTitleText": "器材清单",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/homework-history/index",
+      "style": {
+        "navigationBarTitleText": "历年作品",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/homework-history/detail/index",
+      "style": {
+        "navigationBarTitleText": "作品详情",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/resource/index",
+      "style": {
+        "navigationBarTitleText": "资源详情",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "嵌入式/物联网作业平台",
+    "navigationBarBackgroundColor": "#F8F8F8",
+    "backgroundColor": "#F8F8F8"
+  },
+  "condition": {
+    "current": 0,
+    "list": [
+      {
+        "name": "学生端",
+        "path": "pages/student/PersonalInfo"
+      },
+      {
+        "name": "教师端",
+        "path": "pages/teacher/user-management"
+      }
+    ]
+  }
+}
