@@ -44,6 +44,7 @@ export interface DeviceBorrowPageVO{
     id:string
     member:UserInfo[]
     subjectId:string
+    subjectName:string
     deviceName:string
     applyNum:number
     status:number//0-申请中 1-已同意 2-拒绝 3-已归还
@@ -56,3 +57,23 @@ export interface DeviceStoreRequest{
     helpB:string
     totalNum:number
 }
+
+
+export interface ApplyDeviceVO{
+    id:string
+    deviceId:string
+    deviceName:string
+    applyNum:number
+    status:number
+    statusValue:string
+    subjectStudentId:string
+    pic:string
+    description:string
+    helpB:string
+}
+
+export interface MyDeviceApplyPageRequest {
+    current: number
+    pageSize: number
+}
+

@@ -1,5 +1,4 @@
 <template>
-  <Layout>
     <scroll-view scroll-y class="homework-detail">
       <view class="detail-container" :class="{ 'is-mobile': isMobile }">
         <!-- 返回按钮 -->
@@ -98,7 +97,6 @@
         </view>
       </view>
     </scroll-view>
-  </Layout>
 </template>
 
 

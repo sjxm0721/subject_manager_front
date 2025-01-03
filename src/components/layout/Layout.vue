@@ -134,17 +134,17 @@ const menuConfigs = {
   student: [
     {
       title: '信息管理',
-      path: '/pages/student/PersonalInfo',
+      path: '/pages/student/PersonalInfo/index',
       icon: 'info'
     },
     {
       title: '作业上传',
-      path: '/pages/student/HomeworkUpload',
+      path: '/pages/student/HomeworkUpload/index',
       icon: 'upload'
     },
     {
       title: '器材申请',
-      path: '/pages/student/EquipmentApplication',
+      path: '/pages/student/EquipmentApplication/index',
       icon: 'gear'
     },
     {
@@ -160,8 +160,13 @@ const menuConfigs = {
   teacher: [
     {
       title: '用户管理',
-      path: '/pages/teacher/UserManagement',
+      path: '/pages/teacher/UserManagement/index',
       icon: 'staff'
+    },
+    {
+      title: '课程管理',
+      path: '/pages/teacher/subject/index',
+      icon: 'map'
     },
     {
       title: '器材管理',
@@ -169,24 +174,24 @@ const menuConfigs = {
       children: [
         {
           title: '器材入库',
-          path: '/pages/teacher/equipment/Store',
+          path: '/pages/teacher/equipment/Store/index',
           icon: 'plus'
         },
         {
           title: '器材外借',
-          path: '/pages/teacher/equipment/Borrow',
+          path: '/pages/teacher/equipment/Borrow/index',
           icon: 'upload'
         },
         {
           title: '器材清单',
-          path: '/pages/teacher/equipment/Inventory',
+          path: '/pages/teacher/equipment/Inventory/index',
           icon: 'list'
         }
       ]
     },
     {
       title: '作业管理',
-      path: '/pages/teacher/HomeworkManagement',
+      path: '/pages/teacher/HomeworkManagement/index',
       icon: 'calendar'
     },
     {
@@ -202,7 +207,7 @@ const menuConfigs = {
   guest: [
     {
       title: '信息管理',
-      path: '/pages/guest/GuestInfo',
+      path: '/pages/guest/GuestInfo/index',
       icon: 'info'
     },
     {
@@ -320,67 +325,30 @@ const checkDevice = () => {
 
 // 路由跳转处理
 const handleMenuClick = (item: MenuItem) => {
-  // PC端直接使用redirectTo，因为需要替换当前页面
-  if (!isMobile.value) {
-    uni.redirectTo({
-      url: item.path,
-      success: () => {
-        currentPath.value = item.path;
-      },
-      fail: (err) => {
-        console.error('页面跳转失败:', err);
-        // 如果redirectTo失败，尝试使用switchTab
-        uni.switchTab({
-          url: item.path,
-          fail: (switchErr) => {
-            // 如果switchTab也失败，最后尝试使用reLaunch
-            uni.reLaunch({
-              url: item.path,
-              fail: (relaunchErr) => {
-                console.error('所有跳转方式都失败:', relaunchErr);
-                uni.showToast({
-                  title: '页面跳转失败',
-                  icon: 'error'
-                });
-              }
-            });
-          }
-        });
-      }
-    });
-  } else {
-    // 移动端使用navigateTo
-    uni.navigateTo({
-      url: item.path,
-      fail: (err) => {
-        console.error('页面跳转失败:', err);
-        // 尝试使用switchTab
-        uni.switchTab({
-          url: item.path,
-          fail: (switchErr) => {
-            console.error('切换标签页失败:', switchErr);
-            // 最后尝试使用reLaunch
-            uni.reLaunch({
-              url: item.path
-            });
-          }
-        });
-      }
-    });
+  if (item.path === '/pages/login/index') {
+    uni.reLaunch({ url: item.path })
+    return
   }
 
+  // 统一使用事件通知方式切换页面
+  uni.$emit('pageChange', item.path)
+  currentPath.value = item.path
+
   if (isMobile.value) {
-    mobileMenuOpen.value = false;
+    mobileMenuOpen.value = false
   }
 }
 
-// 退出登录
+// 修改退出登录处理
 const handleLogout = async () => {
   try {
     await userStore.logout()
     uni.showToast({
       title: '退出成功',
       icon: 'success'
+    })
+    uni.reLaunch({
+      url: '/pages/login/index'
     })
   } catch (error) {
     uni.showToast({
@@ -389,6 +357,7 @@ const handleLogout = async () => {
     })
   }
 }
+
 
 // 切换移动端菜单
 const toggleMobileMenu = () => {

@@ -26,5 +26,9 @@ export interface StudentAddOrUpdateRequest{
    uploadAble:number
     userAccount:string
      userName:string
-    groupDetailList:GroupDetail[]
+}
+
+export interface StudentGroupNumQueryRequest{
+    studentId:string
+    subjectId:string
 }

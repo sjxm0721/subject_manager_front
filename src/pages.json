@@ -26,100 +26,147 @@
       }
     },
     {
-      "path": "pages/student/PersonalInfo",
+      "path": "pages/main/index",
       "style": {
-        "navigationBarTitleText": "信息管理",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
+        "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/student/EquipmentApplication",
+      "path": "pages/error/index",
       "style": {
-        "navigationBarTitleText": "器材申请",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
+        "navigationStyle": "custom"
       }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "pages/student",
+      "pages": [
+        {
+          "path": "PersonalInfo/index",
+          "style": {
+            "navigationBarTitleText": "信息管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "EquipmentApplication/index",
+          "style": {
+            "navigationBarTitleText": "器材申请",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "HomeworkUpload/index",
+          "style": {
+            "navigationBarTitleText": "作业上传",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     },
     {
-      "path": "pages/student/HomeworkUpload",
-      "style": {
-        "navigationBarTitleText": "作业上传",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
+      "root": "pages/guest",
+      "pages": [
+        {
+          "path": "GuestInfo/index",
+          "style": {
+            "navigationBarTitleText": "信息管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     },
     {
-      "path": "pages/guest/GuestInfo",
-      "style": {
-        "navigationBarTitleText": "信息管理",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
+      "root": "pages/teacher",
+      "pages": [
+        {
+          "path": "UserManagement/index",
+          "style": {
+            "navigationBarTitleText": "用户管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "HomeworkManagement/index",
+          "style": {
+            "navigationBarTitleText": "作业管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "equipment/Store/index",
+          "style": {
+            "navigationBarTitleText": "器材入库",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "equipment/Borrow/index",
+          "style": {
+            "navigationBarTitleText": "器材外借",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "equipment/Inventory/index",
+          "style": {
+            "navigationBarTitleText": "器材清单",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "subject/index",
+          "style": {
+            "navigationBarTitleText": "课程管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     },
     {
-      "path": "pages/teacher/UserManagement",
-      "style": {
-        "navigationBarTitleText": "用户管理",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
+      "root": "pages/homework-history",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "历年作品",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "detail/index",
+          "style": {
+            "navigationBarTitleText": "作品详情",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     },
     {
-      "path": "pages/teacher/HomeworkManagement",
-      "style": {
-        "navigationBarTitleText": "作业管理",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/teacher/equipment/Store",
-      "style": {
-        "navigationBarTitleText": "器材入库",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/teacher/equipment/Borrow",
-      "style": {
-        "navigationBarTitleText": "器材外借",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/teacher/equipment/Inventory",
-      "style": {
-        "navigationBarTitleText": "器材清单",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/homework-history/index",
-      "style": {
-        "navigationBarTitleText": "历年作品",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/homework-history/detail/index",
-      "style": {
-        "navigationBarTitleText": "作品详情",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
-    },
-    {
-      "path": "pages/resource/index",
-      "style": {
-        "navigationBarTitleText": "资源详情",
-        "navigationStyle": "custom",
-        "enablePullDownRefresh": false
-      }
+      "root": "pages/resource",
+      "pages": [
+        {
+          "path": "index",
+          "style": {
+            "navigationBarTitleText": "资源详情",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
     }
   ],
   "globalStyle": {
@@ -133,11 +180,11 @@
     "list": [
       {
         "name": "学生端",
-        "path": "pages/student/PersonalInfo"
+        "path": "pages/main/index?path=/pages/student/PersonalInfo/index"
       },
       {
         "name": "教师端",
-        "path": "pages/teacher/user-management"
+        "path": "pages/main/index?path=/pages/teacher/UserManagement/index"
       }
     ]
   }

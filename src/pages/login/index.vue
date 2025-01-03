@@ -103,12 +103,10 @@ onMounted(() => {
 })
 
 const handleLogin = async () => {
-  // 修改验证方式
   if (!loginFormRef.value) return
 
   try {
     loading.value = true
-    // 首先进行表单验证
     const valid = await loginFormRef.value.validate()
 
     if (valid) {
@@ -122,15 +120,20 @@ const handleLogin = async () => {
         icon: 'success'
       })
 
-      // 根据角色跳转
-      if (userStore.userInfo?.userRole===1) {
-        uni.redirectTo({ url: '/pages/student/PersonalInfo' })
+      // 修改跳转逻辑
+      let initialPath
+      if (userStore.userInfo?.userRole === 1) {
+        initialPath = '/pages/student/PersonalInfo/index'
       } else if(userStore.userInfo?.userRole === 2) {
-        uni.redirectTo({ url: '/pages/teacher/UserManagement' })
+        initialPath = '/pages/teacher/UserManagement/index'
+      } else {
+        initialPath = '/pages/guest/GuestInfo/index'
       }
-      else{
-        uni.redirectTo({ url: '/pages/guest/GuestInfo' })
-      }
+
+      // 统一使用 main 页面作为容器
+      uni.reLaunch({
+        url: `/pages/main/index?path=${encodeURIComponent(initialPath)}`
+      })
     }
   } catch (error: any) {
     uni.showToast({
@@ -141,6 +144,8 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+
 const handleForgotPassword = () => {
   uni.navigateTo({
     url: '/pages/forgot-password/index'

@@ -1,5 +1,10 @@
 import { http } from '@/utils/request'
-import type {StudentVO, StudentQueryRequest, StudentAddOrUpdateRequest} from '@/types/student'
+import type {
+    StudentVO,
+    StudentQueryRequest,
+    StudentAddOrUpdateRequest,
+    StudentGroupNumQueryRequest
+} from '@/types/student'
 import {LoginRequest, LoginResult} from "@/types/user";
 
 export const studentApi = {
@@ -20,4 +25,15 @@ export const studentApi = {
     deleteStudent(params: string) {
         return http.delete<boolean>(`/student/delete/${params}`)
     },
+    getStudentGroupNum(data: StudentGroupNumQueryRequest){
+        return http.post<number>('/student/group-num',data)
+    },
+    studentExcelImport(data){
+        return http.post<boolean>('/student/import',data)
+    },
+    getStudentDetail(params: string){
+        return http.get<StudentVO>('/student/detail',{
+            id: params
+        })
+    }
 }

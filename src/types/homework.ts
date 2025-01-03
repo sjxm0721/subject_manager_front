@@ -1,4 +1,5 @@
 import {UserInfo} from "@/types/user";
+import {Grade} from "@/types/grade";
 
 export interface Homework {
     id?:string
@@ -17,12 +18,14 @@ export interface Homework {
     attachmentMp4:string
     subject_type:number
     post:string
+    subjectType:number
     submit_year:number
     subject_name:string
 }
 
 
 export interface HomeworkAddRequest{
+    id:number,
     subjectId:number,
     studentId:number,
     title:string,
@@ -41,6 +44,7 @@ export interface HomeworkAddRequest{
 export interface HomeworkQueryRequest {
     title?: string
     grade?: string
+    homeworkTitle?: string
     current: number
     pageSize: number
 }
@@ -66,6 +70,8 @@ export interface HomeworkVO{
     subjectType:number
     createTime:string
     member:UserInfo[]
+    isCorrect:number
+    scores?:Grade[]
 }
 
 export interface HomeworkStatusUpdateRequest{
@@ -90,4 +96,28 @@ export interface HomeworkHistoryVO{
     commend:number
     brief:string
     title:string//标题
+}
+
+
+export interface HomeworkGradePageRequest {
+    subjectId?: string
+    isCorrect?: string
+    current: number
+    pageSize: number
+}
+
+export interface HomeworkGradeVO{
+    id:string;
+
+    subjectId:string;
+
+    subjectName:string;
+
+    groupNum:number;
+
+    title:string;
+
+    isCorrect:number;
+
+    score:Grade;
 }

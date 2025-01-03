@@ -1,10 +1,8 @@
 //@/pages/preview/index.vue
 <template>
-  <Layout>
     <view class="preview-container">
       <ResourcePreview v-if="resource" :resource="resource" />
     </view>
-  </Layout>
 </template>
 
 <script setup lang="ts">

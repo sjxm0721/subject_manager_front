@@ -1,5 +1,4 @@
 <template>
-  <Layout>
     <view class="info-page" :class="{ 'info-page-mobile': isMobile }">
       <view class="page-header">
         <text class="title">信息管理</text>
@@ -49,7 +48,6 @@
         </view>
       </view>
     </view>
-  </Layout>
 </template>
 
 <script setup lang="ts">

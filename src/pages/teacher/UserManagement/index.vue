@@ -1,5 +1,4 @@
 <template>
-  <Layout>
     <view class="user-management">
       <!-- 用户列表区域 -->
       <view class="list-header">
@@ -147,35 +146,106 @@
             </view>
           </view>
 
-          <view class="form-item">
+          <view class="form-item" v-if="isEdit">
             <text class="label">分组设置</text>
             <view class="group-list">
-              <view v-for="(group, index) in form.groupDetails" :key="index" class="group-item">
-                <view class="group-form">
-                  <!-- 修改为 uni-data-select -->
+              <!-- 显示现有分组 -->
+              <view
+                  v-if="isEdit && form.groupDetails?.length"
+                  class="existing-groups"
+              >
+                <view
+                    v-for="(group, index) in form.groupDetails"
+                    :key="index"
+                    class="group-item"
+                >
+                  <view class="group-info">
+                    <text class="group-name">{{group.subjectName}} - 第{{group.groupNum}}组</text>
+                    <view
+                        class="delete-btn"
+                        @click="handleDeleteGroup(group.subjectStudentId!.toString())"
+                    >
+                      <uni-icons type="trash" size="20" color="#f56c6c" />
+                    </view>
+                  </view>
+                </view>
+              </view>
+
+              <!-- 添加新分组表单 -->
+              <view class="add-group-form">
+                <view class="form-row">
+                  <text class="form-label">选择课程</text>
                   <uni-data-select
-                      v-model="group.subjectId"
+                      v-model="newGroup.subjectId"
                       :localdata="subjectList"
                       label="text"
                       value="value"
                       placeholder="请选择课程"
-                      class="subject-select"
-                      @change="handleSubjectChange($event, index)"
                   />
+                </view>
+                <view class="form-row">
+                  <text class="form-label">分组编号</text>
                   <u-input
-                      v-model="group.groupNum"
+                      v-model="newGroup.groupNum"
                       placeholder="请输入分组编号"
+                      type="number"
                       :border="true"
                       class="group-input"
                   />
-                  <view class="delete-btn" @click="removeGroup(index)">
-                    <uni-icons type="trash" size="20" color="#f56c6c" />
-                  </view>
+                </view>
+                <view class="form-row">
+                  <u-button
+                      size="small"
+                      @click="handleAddGroup(newGroup.subjectId, Number(newGroup.groupNum))"
+                      :disabled="!newGroup.subjectId || !newGroup.groupNum"
+                      class="add-btn"
+                  >
+                    添加分组
+                  </u-button>
                 </view>
               </view>
-              <u-button size="small" @click="addGroup()" class="add-group-btn">添加分组</u-button>
             </view>
           </view>
+
+          <template v-if="!isEdit">
+            <view class="form-item file-upload">
+              <text class="label">批量导入</text>
+              <!-- H5环境 -->
+              <!-- #ifdef H5 -->
+              <view class="upload-area">
+                <view
+                    class="upload-content"
+                    :class="{ 'has-file': selectedFile }"
+                    @click="handleSelectFile"
+                >
+                  <uni-icons type="upload" size="24" color="#909399" />
+                  <text class="upload-text">{{ selectedFile ? selectedFile.name : '点击上传Excel文件' }}</text>
+                  <text class="upload-tip">支持 .xlsx、.xls 格式</text>
+                </view>
+              </view>
+              <!-- #endif -->
+
+              <!-- 小程序环境 -->
+              <!-- #ifdef MP-WEIXIN -->
+              <view class="upload-area" @click="chooseFile">
+                <view class="upload-content" :class="{ 'has-file': selectedFile }">
+                  <uni-icons type="upload" size="24" color="#909399" />
+                  <text class="upload-text">{{ selectedFile ? selectedFile.name : '点击上传Excel文件' }}</text>
+                  <text class="upload-tip">支持 .xlsx、.xls 格式</text>
+                </view>
+              </view>
+              <!-- #endif -->
+
+              <view v-if="selectedFile" class="file-actions">
+                <button class="action-btn primary" @click="handleImport" :loading="importing">
+                  {{ importing ? '导入中...' : '开始导入' }}
+                </button>
+                <button class="action-btn" @click="clearFile">取消</button>
+              </view>
+            </view>
+            <view class="divider">或</view>
+          </template>
+
 
         </view>
 
@@ -208,17 +278,16 @@
         </view>
       </view>
     </uni-popup>
-  </Layout>
 </template>
 
 
 <script setup lang="ts">
 import { ref, reactive, onMounted,onBeforeUnmount } from 'vue'
-import Layout from '@/components/layout/Layout.vue'
 import {GroupDetail, StudentVO} from '@/types/student'
 import { studentApi } from '@/api/student'
 import  {debounce}  from 'lodash'
 import {subjectApi} from "@/api/subject";
+import {subjectStudentApi} from "@/api/subjectStudent";
 
 const popupRef = ref<any>(null)
 const saving = ref(false)
@@ -229,13 +298,21 @@ const total = ref(0)
 const groupPopupRef = ref<any>(null)
 const selectedStudent = ref<StudentVO | null>(null)
 const subjectList = ref<{value: number, text: string}[]>([])
-
+const fileInput = ref()
+const selectedFile = ref<File | null>(null)
+const importing = ref(false)
 
 const searchForm = reactive({
   className: '',
   userName: ''
 })
 
+
+const newGroup = reactive({
+  subjectId: '',
+  groupNum: '',
+  subjectName: ''
+})
 
 const form = reactive({
   id: undefined,
@@ -244,11 +321,106 @@ const form = reactive({
   userAccount: '',
   userName: '',
   uploadAble: 0,
-  checkAble: 0,
-  groupDetails:[]
+  checkAble: 0
 })
 
+const currentStudentId = ref<number>()
+
 const studentList = ref<StudentVO[]>([])
+
+// 新增分组相关方法
+const handleAddGroup = async (subjectId: number, groupNum: number) => {
+  try {
+    if (!currentStudentId.value) {
+      uni.showToast({
+        title: '学生信息错误',
+        icon: 'error'
+      })
+      return
+    }
+
+    await subjectStudentApi.addSubjectStudent({
+      subjectId,
+      groupNum,
+      studentId: currentStudentId.value  // 添加studentId参数
+    })
+
+    uni.showToast({
+      title: '添加分组成功',
+      icon: 'success'
+    })
+
+    // 刷新分组信息
+    await getStudentList()
+
+    // 如果正在编辑状态，重新获取学生信息
+    if (isEdit.value && currentStudentId.value) {
+      const studentDetail = await studentApi.getStudentDetail(currentStudentId.value)
+      handleEdit(studentDetail)
+    }
+  } catch (error: any) {
+    uni.showToast({
+      title: error.message || '添加分组失败',
+      icon: 'error'
+    })
+  }
+}
+
+const handleDeleteGroup = async (subjectStudentId: string) => {
+  try {
+    // 使用 Promise 和 uni.showModal 的正确方式
+    const confirmResult = await new Promise((resolve, reject) => {
+      uni.showModal({
+        title: '确认删除',
+        content: '确定要删除这个分组吗？',
+        confirmText: '确认',
+        cancelText: '取消',
+        success: function (res) {
+          if (res.confirm) {
+            resolve(true)
+          } else if (res.cancel) {
+            resolve(false)
+          }
+        },
+        fail: reject
+      })
+    })
+
+    // 如果点击取消，直接返回
+    if (!confirmResult) {
+      return
+    }
+
+    // 用户点击确认，继续删除操作
+    await subjectStudentApi.delSubjectStudent(subjectStudentId)
+
+    uni.showToast({
+      title: '删除分组成功',
+      icon: 'success'
+    })
+
+    // 刷新列表和当前编辑的学生信息
+    await getStudentList()
+    if (isEdit.value && currentStudentId.value) {
+      const studentDetail = await studentApi.getStudentDetail(currentStudentId.value)
+      console.log(studentDetail)
+      handleEdit(studentDetail)
+    }
+
+    // 重置新分组表单
+    Object.assign(newGroup, {
+      subjectId: '',
+      groupNum: '',
+      subjectName: ''
+    })
+  } catch (error: any) {
+    uni.showToast({
+      title: error.message || '删除分组失败',
+      icon: 'error'
+    })
+  }
+}
+
 
 // 获取用户列表
 const getStudentList = async () => {
@@ -270,6 +442,90 @@ const getStudentList = async () => {
   }
 }
 
+// 触发文件选择
+const triggerFileInput = () => {
+  if (fileInput.value) {
+    fileInput.value.click()
+  }
+}
+
+
+// 处理文件选择
+const handleSelectFile = () => {
+  // #ifdef H5
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xlsx,.xls'
+  input.style.display = 'none'
+
+  input.onchange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    if (target.files?.length) {
+      selectedFile.value = target.files[0]
+    }
+    document.body.removeChild(input)
+  }
+
+  document.body.appendChild(input)
+  input.click()
+  // #endif
+}
+
+// 小程序环境下的文件选择
+const chooseFile = () => {
+  // #ifdef MP-WEIXIN
+  uni.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    extension: ['.xlsx', '.xls'],
+    success: (res) => {
+      selectedFile.value = res.tempFiles[0]
+    }
+  })
+  // #endif
+}
+
+// 清除文件
+const clearFile = () => {
+  selectedFile.value = null
+}
+
+// 文件导入处理
+const handleImport = async () => {
+  if (!selectedFile.value) {
+    uni.showToast({
+      title: '请先选择文件',
+      icon: 'none'
+    })
+    return
+  }
+
+  importing.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+
+    await studentApi.studentExcelImport(formData)
+
+    uni.showToast({
+      title: '导入成功',
+      icon: 'success'
+    })
+
+    clearFile()
+    handleClose()
+    getStudentList()
+  } catch (error: any) {
+    uni.showToast({
+      title: error.message || '导入失败',
+      icon: 'error'
+    })
+  } finally {
+    importing.value = false
+  }
+}
+
+
 
 // 显示分组信息
 const showGroupInfo = (student: StudentVO) => {
@@ -287,7 +543,7 @@ const handleSearch = debounce(() => {
 // 下载模板
 const downloadTemplate = () => {
   // 替换为实际的模板下载地址
-  const templateUrl = 'https://your-aliyun-oss-url/template.xlsx'
+  const templateUrl = 'https://bilibilipropost.oss-cn-beijing.aliyuncs.com/studentImport%20%281%29.xlsx'
   window.open(templateUrl)
 }
 
@@ -340,34 +596,16 @@ const handleSubmit = async () => {
   try {
     saving.value = true
 
-    // 处理分组信息
-    const groupDetailList = form.groupDetails?.map(group => ({
-      subjectId: Number(group.subjectId),
-      subjectName: group.subjectName,
-      subjectStudentId: Number(group.subjectStudentId),
-      groupNum: Number(group.groupNum)
-    })) || []
-
     const submitData = {
-      ...form,
-      groupDetailList
+      ...form
     }
 
-    console.log("现在的表单信息",submitData);
+    await studentApi.addOrUpdateStudent(submitData)
 
-    if (isEdit.value) {
-      await studentApi.addOrUpdateStudent(submitData)
-      uni.showToast({
-        title: '修改成功',
-        icon: 'success'
-      })
-    } else {
-      await studentApi.addOrUpdateStudent(submitData)
-      uni.showToast({
-        title: '添加成功',
-        icon: 'success'
-      })
-    }
+    uni.showToast({
+      title: isEdit.value ? '修改成功' : '添加成功',
+      icon: 'success'
+    })
 
     handleClose()
     getStudentList()
@@ -403,9 +641,9 @@ const removeGroup = (index: number) => {
 // 修改编辑表单初始化
 const handleEdit = (student: StudentVO) => {
   isEdit.value = true
+  currentStudentId.value = student.id
   Object.assign(form, {
     ...student,
-    groupDetails: student.groupDetails || []
   })
   popupRef.value?.open('center')
 }
@@ -590,6 +828,14 @@ onBeforeUnmount(() => {
           border-radius: 4px;
           font-size: 14px;
 
+          &.info {
+            color: #409eff;
+
+            &:hover {
+              background-color: #ecf5ff;
+            }
+          }
+
           &.edit {
             color: #409eff;
 
@@ -644,12 +890,16 @@ onBeforeUnmount(() => {
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
   .popup-header {
     position: relative;
     padding: 20px;
     text-align: center;
     border-bottom: 1px solid #eee;
+    background-color: #f8f9fa;
+    flex-shrink: 0;
 
     .title {
       font-size: 18px;
@@ -664,11 +914,18 @@ onBeforeUnmount(() => {
       transform: translateY(-50%);
       cursor: pointer;
       padding: 4px;
+
+      &:hover {
+        opacity: 0.8;
+      }
     }
   }
 
   .popup-content {
+    flex: 1;
+    overflow-y: auto;
     padding: 20px;
+    max-height: calc(80vh - 120px);
 
     .form-item {
       margin-bottom: 20px;
@@ -680,7 +937,9 @@ onBeforeUnmount(() => {
       .label {
         display: block;
         margin-bottom: 8px;
+        font-size: 14px;
         color: #606266;
+        font-weight: 500;
       }
 
       .form-input {
@@ -699,36 +958,10 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    padding: 20px;
+    padding: 16px 20px;
     border-top: 1px solid #eee;
-  }
-}
-
-// 移动端适配
-@media screen and (max-width: 768px) {
-  .user-management {
-    padding: 12px;
-
-    .list-header {
-      .header-row {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-
-        .search-group {
-          flex-direction: column;
-        }
-
-        .action-group {
-          justify-content: flex-end;
-        }
-      }
-    }
-  }
-
-  .user-popup {
-    width: 90%;
-    margin: 0 20px;
+    background-color: #f8f9fa;
+    flex-shrink: 0;
   }
 }
 
@@ -751,11 +984,271 @@ onBeforeUnmount(() => {
   }
 }
 
+.file-upload {
+  margin-bottom: 24px;
+
+  .upload-area {
+    border: 2px dashed #dcdfe6;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover {
+      border-color: #409eff;
+    }
+
+    .upload-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+
+      &.has-file {
+        .upload-text {
+          color: #409eff;
+        }
+      }
+
+      .upload-text {
+        font-size: 14px;
+        color: #606266;
+        word-break: break-all;
+        text-align: center;
+      }
+
+      .upload-tip {
+        font-size: 12px;
+        color: #909399;
+      }
+    }
+  }
+
+  .file-input {
+    display: none;
+  }
+
+  .file-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+
+    .action-btn {
+      min-width: 90px;
+      height: 32px;
+      line-height: 32px;
+      padding: 0 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+
+      &.primary {
+        background-color: #409eff;
+        color: #fff;
+
+        &:hover {
+          background-color: #66b1ff;
+        }
+
+        &:active {
+          background-color: #3a8ee6;
+        }
+      }
+
+      &:not(.primary) {
+        background-color: #f5f7fa;
+        color: #606266;
+
+        &:hover {
+          background-color: #e4e7ed;
+        }
+      }
+    }
+  }
+}
+
+.divider {
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+  margin: 24px 0;
+  position: relative;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: calc(50% - 20px);
+    height: 1px;
+    background-color: #dcdfe6;
+  }
+
+  &::before {
+    left: 0;
+  }
+
+  &::after {
+    right: 0;
+  }
+}
+
+.group-list {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 0;
+
+  .existing-groups {
+    margin-bottom: 16px;
+
+    .group-item {
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #ebeef5;
+      transition: all 0.3s;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      &:hover {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+      }
+
+      .group-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+
+        .group-name {
+          font-size: 14px;
+          color: #333;
+          display: flex;
+          align-items: center;
+          flex: 1;
+          min-width: 0;
+          word-break: break-all;
+
+          &::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: #409eff;
+            border-radius: 2px;
+            margin-right: 8px;
+            flex-shrink: 0;
+          }
+        }
+
+        .delete-btn {
+          padding: 6px;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.3s;
+          flex-shrink: 0;
+
+          &:hover {
+            background-color: #fef0f0;
+
+            :deep(.uni-icons) {
+              color: #f56c6c !important;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .add-group-form {
+    background: #fff;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid #ebeef5;
+
+    .form-row {
+      margin-bottom: 12px;
+
+      &:last-child {
+        margin-bottom: 0;
+        margin-top: 16px;
+        text-align: right;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #606266;
+      }
+    }
+
+    .group-input {
+      width: 100%;
+      max-width: 200px;
+
+      :deep(input) {
+        height: 32px;
+        line-height: 32px;
+        border: 1px solid #DCDFE6;
+        border-radius: 4px;
+        padding: 0 12px;
+        background: #fff;
+        width: 100%;
+        font-size: 14px;
+        color: #606266;
+
+        &:focus {
+          border-color: #409eff;
+        }
+
+        &::placeholder {
+          color: #C0C4CC;
+        }
+      }
+    }
+
+    .add-btn {
+      min-width: 80px;
+      height: 32px;
+      line-height: 32px;
+      padding: 0 16px;
+      background: #409eff;
+      color: #fff;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+
+      &:hover {
+        background: #66b1ff;
+      }
+
+      &:active {
+        background: #3a8ee6;
+      }
+
+      &[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
 .group-popup {
   width: 90%;
-  max-width: 600px; // 增加最大宽度
+  max-width: 600px;
   background: #fff;
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 
   .popup-header {
@@ -764,11 +1257,25 @@ onBeforeUnmount(() => {
     text-align: center;
     background: #f8f9fa;
     border-bottom: 1px solid #eee;
+    flex-shrink: 0;
 
     .title {
       font-size: 20px;
       font-weight: 500;
       color: #333;
+    }
+
+    .close-icon {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      padding: 4px;
+
+      &:hover {
+        opacity: 0.8;
+      }
     }
   }
 
@@ -776,6 +1283,7 @@ onBeforeUnmount(() => {
     padding: 24px;
     max-height: 60vh;
     overflow-y: auto;
+    flex: 1;
 
     .group-list {
       display: grid;
@@ -805,17 +1313,51 @@ onBeforeUnmount(() => {
       }
     }
   }
+
+  .no-group {
+    text-align: center;
+    color: #909399;
+    padding: 32px 0;
+    font-size: 14px;
+  }
 }
 
-// 移动端适配补充
+/* 移动端适配 */
 @media screen and (max-width: 768px) {
   .user-management {
+    padding: 12px;
+
+    .list-header {
+      .header-row {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+
+        .search-group {
+          flex-direction: column;
+
+          .search-item {
+            width: 100%;
+
+            .search-input {
+              flex: 1;
+              width: auto;
+            }
+          }
+        }
+
+        .action-group {
+          justify-content: flex-end;
+        }
+      }
+    }
+
     .table-header {
-      display: none; // 隐藏表头
+      display: none;
     }
 
     .table-row {
-      display: block; // 改变布局方式
+      display: block !important;
       padding: 16px;
       margin-bottom: 16px;
       background: #fff;
@@ -831,6 +1373,7 @@ onBeforeUnmount(() => {
         &::before {
           content: attr(data-label);
           width: 80px;
+          flex-shrink: 0;
           color: #909399;
           font-size: 14px;
         }
@@ -842,7 +1385,12 @@ onBeforeUnmount(() => {
 
       .permission-col {
         justify-content: flex-start;
-        padding-left: 80px; // 对齐其他字段
+        padding-left: 80px;
+
+        .permission-tag {
+          padding: 2px 8px;
+          font-size: 12px;
+        }
       }
 
       .action-col {
@@ -851,11 +1399,18 @@ onBeforeUnmount(() => {
         padding-top: 16px;
         margin-top: 8px;
         border-top: 1px solid #eee;
+        border-bottom: none;
+
+        &::before {
+          display: none;
+        }
 
         .action-btn {
           padding: 6px 12px;
           border-radius: 4px;
           font-size: 14px;
+          flex: 1;
+          text-align: center;
 
           &.info {
             background: #ecf5ff;
@@ -875,51 +1430,142 @@ onBeforeUnmount(() => {
       }
     }
   }
+
+  .user-popup {
+    width: 90%;
+    margin: 0 20px;
+    max-height: 90vh;
+    position: relative;
+
+    .popup-content {
+      padding: 16px;
+      max-height: calc(90vh - 120px);
+      -webkit-overflow-scrolling: touch;
+
+      .form-item {
+        .group-list {
+          padding: 12px;
+
+          .add-group-form {
+            padding: 12px;
+
+            .form-row {
+              .group-input {
+                max-width: 90%;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .popup-footer {
+      position: relative;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      background: #f8f9fa;
+      padding: 12px 16px;
+    }
+  }
+
+  .file-upload {
+    .upload-area {
+      padding: 16px;
+    }
+
+    .file-actions {
+      flex-direction: column;
+
+      .action-btn {
+        width: 100%;
+      }
+    }
+  }
+
+  .group-popup {
+    width: 92%;
+    margin: 0 4%;
+    max-height: 80vh;
+
+    .popup-header {
+      padding: 16px;
+    }
+
+    .popup-content {
+      padding: 16px;
+      max-height: calc(80vh - 120px);
+    }
+  }
 }
 
-.group-list {
-  .group-item {
-    margin-bottom: 16px;
+/* 小程序特别适配 */
+/* #ifdef MP-WEIXIN */
+.user-management {
+  .table-row {
+    margin: 12px;
 
-    .group-form {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-
-      .subject-select {
-        flex: 2;
-      }
-
-      .group-input {
-        flex: 1;
-      }
-
-      .delete-btn {
-        padding: 8px;
-        cursor: pointer;
-
-        &:hover {
-          opacity: 0.8;
+    .action-col {
+      .action-btn {
+        &::after {
+          border: none;
         }
       }
     }
   }
-
-  .add-group-btn {
-    width: 100%;
-    margin-top: 8px;
-  }
 }
 
-.group-popup {
+.user-popup {
+  .popup-content {
+    max-height: calc(80vh - 100px);
+  }
+
+  .popup-footer {
+    padding: 12px;
+
+    :deep(.u-button) {
+      margin: 0;
+      &::after {
+        border: none;
+      }
+    }
+  }
+
   .form-item {
     .group-list {
-      background: #f8f9fa;
-      padding: 16px;
-      border-radius: 8px;
+      .add-group-form {
+        .add-btn {
+          &::after {
+            border: none;
+          }
+        }
+      }
     }
   }
 }
 
+.group-popup {
+  .popup-content {
+    padding: 12px;
+  }
+}
+
+.file-upload {
+  .upload-area {
+    margin: 0 12px;
+  }
+
+  .file-actions {
+    margin: 16px 12px;
+
+    .action-btn {
+      &::after {
+        border: none;
+      }
+    }
+  }
+}
+/* #endif */
 
 </style>

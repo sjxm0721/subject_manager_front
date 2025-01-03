@@ -1,6 +1,5 @@
 <!-- pages/teacher/equipment/inventory.vue -->
 <template>
-  <Layout>
     <view class="inventory-container">
       <!-- 搜索区域 -->
       <view class="search-section">
@@ -33,7 +32,8 @@
               >
                 <view class="card-header">
                   <text class="device-name">{{ item.deviceName }}</text>
-                  <text class="device-quantity">数量：{{ item.totalNum }}</text>
+                  <text class="device-quantity">总量：{{ item.totalNum }}</text>
+                  <text class="device-quantity remain">余量：{{ item.totalNum - (item.outerNum || 0) }}</text>
                 </view>
                 <view class="card-body">
                   <view class="image-container">
@@ -78,7 +78,8 @@
               >
                 <uni-tr>
                   <uni-th width="200">名称</uni-th>
-                  <uni-th width="80">数量</uni-th>
+                  <uni-th width="80">总量</uni-th>
+                  <uni-th width="80">余量</uni-th>
                   <uni-th width="100">图片</uni-th>
                   <uni-th>描述</uni-th>
                   <uni-th width="80">说明书</uni-th>
@@ -87,6 +88,7 @@
                 <uni-tr v-for="item in deviceList" :key="item.id">
                   <uni-td>{{ item.deviceName }}</uni-td>
                   <uni-td>{{ item.totalNum }}</uni-td>
+                  <uni-td>{{ item.totalNum - (item.outerNum || 0) }}</uni-td>
                   <uni-td>
                     <image
                         v-if="item.pic"
@@ -173,7 +175,6 @@
         </uni-popup-dialog>
       </uni-popup>
     </view>
-  </Layout>
 </template>
 
 <script setup lang="ts">
@@ -398,6 +399,30 @@ onBeforeUnmount(() => {
 
         &:hover {
           background: rgba(41, 121, 255, 0.1);
+        }
+      }
+    }
+
+    &.is-mobile {
+      .device-card {
+        .card-header {
+          .quantity-info {
+            display: flex;
+            gap: 8px;
+
+            .device-quantity {
+              font-size: 14px;
+              color: #666;
+              background: #f5f7fa;
+              padding: 4px 12px;
+              border-radius: 16px;
+
+              &.remain {
+                background: #e6f7ff;
+                color: #1890ff;
+              }
+            }
+          }
         }
       }
     }

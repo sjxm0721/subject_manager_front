@@ -1,5 +1,4 @@
 <template>
-  <Layout>
     <view class="device-add">
       <view class="form-container">
         <!-- 表单标题 -->
@@ -107,7 +106,6 @@
         </view>
       </view>
     </view>
-  </Layout>
 </template>
 
 <script setup lang="ts">

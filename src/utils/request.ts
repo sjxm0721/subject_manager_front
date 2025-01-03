@@ -39,6 +39,11 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
     (response) => {
+        // 如果是文件下载，直接返回response
+        if (response.config.responseType === 'blob') {
+            return response
+        }
+
         const res = response.data
         if (res.code !== 200&&res.code!==0) {
             // 统一错误提示
@@ -66,6 +71,30 @@ service.interceptors.response.use(
         return res.data
     },
     (error) => {
+        // 处理blob类型的错误响应
+        if (error.response?.config?.responseType === 'blob') {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => {
+                    try {
+                        const errorData = JSON.parse(reader.result as string)
+                        uni.showToast({
+                            title: errorData.message || '导出失败',
+                            icon: 'error',
+                            duration: 2000
+                        })
+                    } catch (e) {
+                        uni.showToast({
+                            title: '导出失败',
+                            icon: 'error',
+                            duration: 2000
+                        })
+                    }
+                    reject(error)
+                }
+                reader.readAsText(error.response.data)
+            })
+        }
         uni.showToast({
             title: error.message || '网络异常',
             icon: 'error',
@@ -75,7 +104,8 @@ service.interceptors.response.use(
     }
 )
 
-export const http = {
+
+const http = {
     get<T = any>(url: string, params?: any) {
         return service.get<T>(url, { params })
     },
@@ -92,3 +122,5 @@ export const http = {
         return service.delete<T>(url, { params })
     }
 }
+
+export {service,http}

@@ -1,177 +1,178 @@
 <template>
-  <Layout>
-    <view class="homework-upload">
-      <!-- 基本信息部分 -->
-      <view class="form-section">
-        <view class="section-header">
-          <text class="section-title">基本信息</text>
-        </view>
-
-        <view class="form-item">
-          <text class="label">设计题目</text>
-          <uni-easyinput
-              v-model="formData.title"
-              placeholder="请输入设计题目"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="label">选择课程</text>
-          <picker
-              :range="subjectList"
-              range-key="text"
-              @change="handleSubjectChange"
-          >
-            <view class="uni-input">{{ getSelectedSubject }}</view>
-          </picker>
-        </view>
-
-        <view class="form-item">
-          <text class="label">类型</text>
-          <radio-group @change="handleTypeChange">
-            <label class="radio-label" v-for="item in typeOptions" :key="item.value">
-              <radio :value="item.value" :checked="formData.type === item.value" />
-              <text>{{ item.label }}</text>
-            </label>
-          </radio-group>
-        </view>
+  <view class="homework-upload">
+    <!-- 基本信息部分 -->
+    <view class="form-section">
+      <view class="section-header">
+        <text class="section-title">基本信息</text>
       </view>
 
-      <!-- 富文本编辑器部分 -->
-      <view class="form-section">
-        <view class="form-item">
-          <text class="label">背景</text>
-          <!-- #ifdef H5 -->
-          <Editor
-              id="background-editor"
-              v-model="formData.background"
-              :init="editorInit"
-              :disabled="false"
-              @onClick="handleEditorClick"
-          />
-          <!-- #endif -->
-
-          <!-- #ifdef MP-WEIXIN -->
-          <Editor
-              id="background-editor"
-              class="weixin-editor"
-              :placeholder="'请输入背景描述'"
-              @ready="onEditorReady('background')"
-              @input="onEditorInput($event, 'background')"
-          ></Editor>
-          <!-- #endif -->
-        </view>
-
-        <view class="form-item">
-          <text class="label">系统设计</text>
-          <!-- #ifdef H5 -->
-          <Editor
-              id="system-editor"
-              v-model="formData.systemDesign"
-              :init="editorInit"
-              :disabled="false"
-              @onClick="handleEditorClick"
-          />
-          <!-- #endif -->
-
-          <!-- #ifdef MP-WEIXIN -->
-          <Editor
-              id="system-editor"
-              class="weixin-editor"
-              :placeholder="'请输入系统设计描述'"
-              @ready="onEditorReady('systemDesign')"
-              @input="onEditorInput($event, 'systemDesign')"
-          ></Editor>
-          <!-- #endif -->
-        </view>
+      <view class="form-item">
+        <text class="label">设计题目</text>
+        <uni-easyinput
+            v-model="formData.title"
+            placeholder="请输入设计题目"
+        />
       </view>
 
-      <!-- 在系统设计后面添加新的表单项 -->
-      <view class="form-section">
-        <view class="form-item">
-          <text class="label">内容简介</text>
-          <textarea
-              v-model="formData.brief"
-              class="content-textarea"
-              placeholder="请输入内容简介(不超过300字)"
-              maxlength="300"
-          />
-          <text class="word-count">{{formData.brief.length}}/300</text>
-        </view>
-
-        <view class="form-item">
-          <text class="label">硬件技术</text>
-          <textarea
-              v-model="formData.hardwareTech"
-              class="content-textarea"
-              placeholder="请输入硬件技术说明"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="label">软件技术</text>
-          <textarea
-              v-model="formData.softwareTech"
-              class="content-textarea"
-              placeholder="请输入软件技术说明"
-          />
-        </view>
+      <view class="form-item">
+        <text class="label">选择课程</text>
+        <picker
+            :range="subjectList"
+            range-key="text"
+            @change="handleSubjectChange"
+        >
+          <view class="uni-input">{{ getSelectedSubject }}</view>
+        </picker>
       </view>
 
-
-      <!-- 文件上传部分 -->
-      <view class="form-section">
-        <view class="section-header">
-          <text class="section-title">附件上传</text>
-        </view>
-
-        <view class="upload-grid">
-          <view v-for="(config, type) in uploadConfig" :key="type" class="upload-item">
-            <text class="upload-label">{{ config.label }}</text>
-
-            <view class="file-list">
-              <view v-for="(file, index) in fileList[type]" :key="index" class="file-item">
-                <text class="file-name">{{ file.name }}</text>
-                <text class="delete-btn" @tap="handleDeleteFile(type, index)">×</text>
-              </view>
-            </view>
-
-            <!-- #ifdef H5 || APP-PLUS -->
-            <button
-                class="upload-btn"
-                :disabled="uploading"
-                @tap="handleSelectFile(type)"
-            >
-              选择文件
-            </button>
-            <!-- #endif -->
-
-            <!-- #ifdef MP-WEIXIN -->
-            <button
-                class="upload-btn"
-                :disabled="uploading"
-                @tap="handleSelectFileMP(type)"
-            >
-              选择文件
-            </button>
-            <!-- #endif -->
-          </view>
-        </view>
-      </view>
-
-      <!-- 提交按钮 -->
-      <view class="submit-section">
-        <button class="submit-btn" :disabled="uploading" @tap="handleSubmit">
-          {{ uploading ? '上传中...' : '提交' }}
-        </button>
+      <view class="form-item">
+        <text class="label">类型</text>
+        <radio-group @change="handleTypeChange">
+          <label class="radio-label" v-for="item in typeOptions" :key="item.value">
+            <radio :value="item.value" :checked="formData.subjectType === item.value" />
+            <text>{{ item.label }}</text>
+          </label>
+        </radio-group>
       </view>
     </view>
 
-  </Layout>
+    <!-- 富文本编辑器部分 -->
+    <view class="form-section">
+      <view class="form-item">
+        <text class="label">背景</text>
+        <!-- #ifdef H5 -->
+        <Editor
+            id="background-editor"
+            v-model="formData.background"
+            :init="editorInit"
+            :disabled="false"
+            @onClick="handleEditorClick"
+        />
+        <!-- #endif -->
+
+        <!-- #ifdef MP-WEIXIN -->
+        <Editor
+            id="background-editor"
+            class="weixin-editor"
+            :placeholder="'请输入背景描述'"
+            @ready="onEditorReady('background')"
+            @input="onEditorInput($event, 'background')"
+        ></Editor>
+        <!-- #endif -->
+      </view>
+
+      <view class="form-item">
+        <text class="label">系统设计</text>
+        <!-- #ifdef H5 -->
+        <Editor
+            id="system-editor"
+            v-model="formData.systemDesign"
+            :init="editorInit"
+            :disabled="false"
+            @onClick="handleEditorClick"
+        />
+        <!-- #endif -->
+
+        <!-- #ifdef MP-WEIXIN -->
+        <Editor
+            id="system-editor"
+            class="weixin-editor"
+            :placeholder="'请输入系统设计描述'"
+            @ready="onEditorReady('systemDesign')"
+            @input="onEditorInput($event, 'systemDesign')"
+        ></Editor>
+        <!-- #endif -->
+      </view>
+    </view>
+
+    <!-- 在系统设计后面添加新的表单项 -->
+    <view class="form-section">
+      <view class="form-item">
+        <text class="label">内容简介</text>
+        <textarea
+            v-model="formData.brief"
+            class="content-textarea"
+            placeholder="请输入内容简介(不超过300字)"
+            maxlength="300"
+        />
+        <text class="word-count">{{formData.brief.length}}/300</text>
+      </view>
+
+      <view class="form-item">
+        <text class="label">硬件技术</text>
+        <textarea
+            v-model="formData.hardwareTech"
+            class="content-textarea"
+            placeholder="请输入硬件技术说明"
+        />
+      </view>
+
+      <view class="form-item">
+        <text class="label">软件技术</text>
+        <textarea
+            v-model="formData.softwareTech"
+            class="content-textarea"
+            placeholder="请输入软件技术说明"
+        />
+      </view>
+    </view>
+
+
+    <!-- 文件上传部分 -->
+    <view class="form-section">
+      <view class="section-header">
+        <text class="section-title">附件上传</text>
+      </view>
+
+      <view class="upload-grid">
+        <view v-for="(config, type) in uploadConfig" :key="type" class="upload-item">
+          <text class="upload-label">{{ config.label }}</text>
+
+          <view class="file-list">
+            <view v-for="(file, index) in fileList[type]" :key="index" class="file-item">
+              <text class="file-name truncate-filename"
+                    :data-filename="file.name"
+                    :title="file.name">
+                {{ file.name }}
+              </text>
+              <text class="delete-btn" @tap="handleDeleteFile(type, index)">×</text>
+            </view>
+          </view>
+
+          <!-- #ifdef H5 || APP-PLUS -->
+          <button
+              class="upload-btn"
+              :disabled="uploading"
+              @tap="handleSelectFile(type)"
+          >
+            选择文件
+          </button>
+          <!-- #endif -->
+
+          <!-- #ifdef MP-WEIXIN -->
+          <button
+              class="upload-btn"
+              :disabled="uploading"
+              @tap="handleSelectFileMP(type)"
+          >
+            选择文件
+          </button>
+          <!-- #endif -->
+        </view>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="submit-section">
+      <button class="submit-btn" :disabled="uploading" @tap="handleSubmit">
+        {{ uploading ? '上传中...' : '提交' }}
+      </button>
+    </view>
+  </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive ,onMounted,onUnmounted,watch} from 'vue'
+import { ref, computed, reactive ,onMounted,onUnmounted,watch,watchEffect} from 'vue'
 import  Editor  from '@tinymce/tinymce-vue';
 import {subjectApi} from "@/api/subject";
 import 'tinymce/tinymce.min.js'
@@ -217,9 +218,10 @@ interface FileItem {
 }
 
 interface FormState {
+  id:string
   title: string
   subjectId: string | number
-  type: number
+  subjectType: number
   brief: string
   hardwareTech: string
   softwareTech: string
@@ -251,10 +253,80 @@ const uploadConfig = {
 const subjectList = ref<Subject[]>([])
 const uploading = ref(false)
 
+const props = defineProps({
+  homeworkId: {
+    type: String,
+    default: ''
+  }
+})
+
+const loadHomeworkData = async () => {
+  try {
+    console.log("加载作业信息", props.homeworkId)
+    if (!props.homeworkId) return
+
+    const res = await homeworkApi.getMyHomeworkDetail(props.homeworkId)
+    if (res) {
+      // 填充表单数据
+      Object.assign(formData, {
+        id:res.id,
+        title: res.title,
+        subjectId: res.subjectId,
+        subjectType: res.subjectType,
+        brief: res.brief || '',
+        hardwareTech: res.hardwareTech || '',
+        softwareTech: res.softwareTech || '',
+        background: res.background || '',
+        systemDesign: res.systemDesign || '',
+      })
+
+      // 填充文件列表
+      if (res.attachmentWord) {
+        fileList.word = res.attachmentWord.split(',').map(url => ({
+          name: url.split('/').pop() || '',
+          url
+        }))
+      }
+      if (res.attachmentPdf) {
+        fileList.pdf = res.attachmentPdf.split(',').map(url => ({
+          name: url.split('/').pop() || '',
+          url
+        }))
+      }
+      if (res.attachmentSource) {
+        fileList.source = res.attachmentSource.split(',').map(url => ({
+          name: url.split('/').pop() || '',
+          url
+        }))
+      }
+      if (res.attachmentMp4) {
+        fileList.mp4 = res.attachmentMp4.split(',').map(url => ({
+          name: url.split('/').pop() || '',
+          url
+        }))
+      }
+    }
+  } catch (error) {
+    console.error('加载作业数据失败：', error)
+    uni.showToast({
+      title: '加载作业数据失败',
+      icon: 'none'
+    })
+  }
+}
+
+// 最后才使用 watch 或 watchEffect
+watchEffect(async () => {
+  if (props.homeworkId) {
+    await loadHomeworkData()
+  }
+})
+
 const formData = reactive<FormState>({
+  id: '',
   title: '',
   subjectId: '',
-  type: 0,
+  subjectType: 0,
   brief: '',
   hardwareTech: '',
   softwareTech: '',
@@ -277,6 +349,8 @@ const typeOptions = [
   { label: '嵌入式', value: 0 },
   { label: '物联网', value: 1 }
 ]
+
+const emit = defineEmits(['update:homeworkId'])
 
 // 计算属性
 const getSelectedSubject = computed(() => {
@@ -454,7 +528,7 @@ const handleSubjectChange = (e: any) => {
 }
 
 const handleTypeChange = (e: any) => {
-  formData.type = Number(e.detail.value)
+  formData.subjectType = Number(e.detail.value)
 }
 
 
@@ -643,8 +717,8 @@ const handleSubmit = async () => {
       attachmentMp4: fileList.mp4.map(f => f.url).join(',')
     }
 
-
-    const res = await homeworkApi.addHomework(submitData)
+    console.log(submitData)
+    const res = await homeworkApi.addOrUpdateHomework(submitData)
     if (res) {
       uni.showToast({
         title: '提交成功',
@@ -719,6 +793,7 @@ onUnmounted(() => {
   editorCtx.background = null;
   editorCtx.systemDesign = null;
   // #endif
+  emit('update:homeworkId', '') // 清空 homeworkId
 });
 
 </script>
@@ -825,12 +900,107 @@ onUnmounted(() => {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+
+    @media screen and (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 0;
+      overflow: hidden;
+    }
 
     .upload-item {
+      width: 100%;
+      box-sizing: border-box;
       background-color: #f8f9fa;
       border-radius: 8px;
       padding: 16px;
       border: 1px solid #e4e7ed;
+
+      @media screen and (max-width: 768px) {
+        padding: 12px 8px;
+        margin: 0;
+        width: 100%;
+
+        .file-list {
+          max-height: 100px;
+          margin-bottom: 8px;
+          width: 100%;
+          box-sizing: border-box;
+
+          .file-item {
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+
+            .file-name {
+              flex: 1;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              font-size: 13px;
+              color: #606266;
+              padding-right: 8px;
+              box-sizing: border-box;
+
+              @media screen and (max-width: 768px) {
+                max-width: 150px; // 移动端限制最大宽度
+                font-size: 12px;
+
+                // 如果文件名太长，显示前10个字符和后6个字符
+                &.truncate-filename {
+                  display: inline-block;
+                  max-width: 150px;
+                  position: relative;
+
+                  &::before {
+                    content: attr(data-filename);
+                    position: absolute;
+                    left: 0;
+                    width: 100%;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                  }
+                }
+              }
+            }
+
+            .delete-btn {
+              min-width: 20px; // 确保删除按钮有固定宽度
+              width: 20px;
+              height: 20px;
+              line-height: 20px;
+              text-align: center;
+              flex-shrink: 0; // 防止压缩
+
+              @media screen and (max-width: 768px) {
+                min-width: 16px;
+                width: 16px;
+                height: 16px;
+                line-height: 16px;
+              }
+            }
+          }
+        }
+
+        .upload-label {
+          margin-bottom: 8px;
+          font-size: 13px;
+          padding: 0 4px;
+        }
+
+        .upload-btn {
+          height: 32px;
+          font-size: 13px;
+          margin: 0;
+          width: 100%;
+        }
+      }
 
       .upload-label {
         display: block;
@@ -844,6 +1014,8 @@ onUnmounted(() => {
         margin-bottom: 12px;
         max-height: 150px;
         overflow-y: auto;
+        width: 100%;
+        box-sizing: border-box;
 
         .file-item {
           display: flex;
@@ -854,6 +1026,8 @@ onUnmounted(() => {
           border: 1px solid #ebeef5;
           border-radius: 6px;
           margin-bottom: 8px;
+          width: 100%;
+          box-sizing: border-box;
 
           &:last-child {
             margin-bottom: 0;
@@ -867,6 +1041,8 @@ onUnmounted(() => {
             font-size: 13px;
             color: #606266;
             padding-right: 12px;
+            box-sizing: border-box;
+            max-width: calc(100% - 32px);
           }
 
           .delete-btn {
@@ -877,6 +1053,7 @@ onUnmounted(() => {
             border-radius: 50%;
             color: #f56c6c;
             cursor: pointer;
+            flex-shrink: 0;
 
             &:hover {
               background-color: #fef0f0;
@@ -902,6 +1079,7 @@ onUnmounted(() => {
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        box-sizing: border-box;
 
         &:hover {
           border-color: #409eff;
@@ -972,88 +1150,6 @@ onUnmounted(() => {
     }
   }
 
-  /* 适配暗色主题 */
-  @media (prefers-color-scheme: dark) {
-    .homework-upload {
-      background-color: #1a1a1a;
-
-      .form-section {
-        background-color: #232323;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-      }
-
-      .section-header .section-title {
-        color: #e6e6e6;
-      }
-
-      .form-item .label {
-        color: #e6e6e6;
-      }
-
-      .editor-container {
-        border-color: #4c4c4c;
-
-        .editor-toolbar {
-          background-color: #2c2c2c;
-          border-color: #4c4c4c;
-
-          .tool-item {
-            .tool-icon {
-              color: #a8abb2;
-            }
-
-            &:hover {
-              background-color: #363636;
-            }
-          }
-        }
-
-        .editor-content {
-          background-color: #2c2c2c;
-          color: #e6e6e6;
-        }
-      }
-
-      .upload-grid {
-        .upload-item {
-          background-color: #2c2c2c;
-          border-color: #4c4c4c;
-
-          .upload-label {
-            color: #e6e6e6;
-          }
-
-          .file-list {
-            .file-item {
-              background-color: #363636;
-              border-color: #4c4c4c;
-
-              .file-name {
-                color: #e6e6e6;
-              }
-            }
-          }
-
-          .upload-btn {
-            background-color: #2c2c2c;
-            border-color: #4c4c4c;
-            color: #e6e6e6;
-
-            &:hover {
-              border-color: #409eff;
-              color: #409eff;
-            }
-
-            &:disabled {
-              background-color: #363636;
-              border-color: #4c4c4c;
-              color: #808080;
-            }
-          }
-        }
-      }
-    }
-  }
 
   /* 小程序特定样式 */
   /* #ifdef MP-WEIXIN */
@@ -1100,23 +1196,6 @@ onUnmounted(() => {
   padding: 12px;
 }
 
-/* 暗色模式适配 */
-@media (prefers-color-scheme: dark) {
-  .tox-tinymce {
-    border-color: #4c4c4c !important;
-  }
-
-  .tox .tox-toolbar__primary {
-    background-color: #2c2c2c !important;
-    border-color: #4c4c4c !important;
-  }
-
-  .weixin-editor {
-    background-color: #2c2c2c;
-    border-color: #4c4c4c;
-    color: #e6e6e6;
-  }
-}
 
 /* 编辑器相关样式修改 */
 :deep(.tox-tinymce) {
@@ -1173,29 +1252,6 @@ onUnmounted(() => {
   }
 }
 
-/* 暗色模式适配补充 */
-@media (prefers-color-scheme: dark) {
-  :deep(.tox-tinymce) {
-    background-color: #2c2c2c !important;
-    border-color: #4c4c4c !important;
-  }
-
-  :deep(.tox-toolbar__primary) {
-    background-color: #363636 !important;
-    border-color: #4c4c4c !important;
-  }
-
-  :deep(.tox-edit-area__iframe) {
-    background-color: #2c2c2c !important;
-  }
-
-  .weixin-editor {
-    background-color: #2c2c2c;
-    border-color: #4c4c4c;
-    color: #e6e6e6;
-  }
-}
-
 .content-textarea {
   width: 100%;
   min-height: 120px;
@@ -1231,19 +1287,17 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-/* 暗黑模式适配 */
-@media (prefers-color-scheme: dark) {
-  .content-textarea {
-    //background-color: #2c2c2c;
-    //border-color: #4c4c4c;
-    color: #e6e6e6;
 
-    &:hover {
-      border-color: #666;
-    }
+@media screen and (max-width: 768px) {
+  .form-section {
+    padding: 12px !important;
+  }
 
-    &:focus {
-      border-color: #409eff;
+  .section-header {
+    margin-bottom: 12px;
+
+    .section-title {
+      font-size: 16px;
     }
   }
 }

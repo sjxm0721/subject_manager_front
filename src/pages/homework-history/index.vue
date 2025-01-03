@@ -1,5 +1,4 @@
 <template>
-  <Layout>
     <view class="homework-list">
       <scroll-view
           scroll-y
@@ -94,11 +93,10 @@
         </view>
       </scroll-view>
     </view>
-  </Layout>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
+import { ref, onMounted, computed, onBeforeUnmount,watch } from 'vue';
 import { useUserStore } from '@/store/user';
 import { homeworkApi } from '@/api/homework';
 import type { HomeworkHistoryVO, HomeworkHistoryPageQueryRequest } from '@/types/homework';
@@ -115,32 +113,6 @@ const isTeacher = ref(userStore.userInfo?.userRole === 2);
 const windowWidth = ref(uni.getSystemInfoSync().windowWidth);
 const isMobile = computed(() => windowWidth.value <= 768);
 
-// 监听窗口大小变化
-const handleResize = () => {
-  // #ifdef H5
-  windowWidth.value = document.documentElement.clientWidth;
-  // #endif
-
-  // #ifndef H5
-  const info = uni.getSystemInfoSync();
-  windowWidth.value = info.windowWidth;
-  // #endif
-};
-
-// 添加和移除窗口大小变化监听器
-onMounted(() => {
-  // #ifdef H5
-  window.addEventListener('resize', handleResize);
-  // #endif
-
-  getHomeworkList();
-});
-
-onBeforeUnmount(() => {
-  // #ifdef H5
-  window.removeEventListener('resize', handleResize);
-  // #endif
-});
 
 // 列表数据
 const homeworkList = ref<HomeworkHistoryVO[]>([]);
@@ -149,6 +121,15 @@ const finished = ref(false);
 const current = ref(1);
 const pageSize = ref(10);
 
+// 重置列表状态
+const resetListState = () => {
+  homeworkList.value = [];
+  current.value = 1;
+  finished.value = false;
+  loading.value = false;
+};
+
+
 // 获取作品列表
 const getHomeworkList = async () => {
   if (loading.value || finished.value) return;
@@ -156,7 +137,7 @@ const getHomeworkList = async () => {
   loading.value = true;
   try {
     const params: HomeworkHistoryPageQueryRequest = {
-      year: props.year,
+      year: props.year ? Number(props.year) : undefined,
       current: current.value,
       pageSize: pageSize.value
     };
@@ -180,10 +161,42 @@ const getHomeworkList = async () => {
   }
 };
 
+
+
+watch(() => props.year, (newYear) => {
+  console.log('Year changed to:', newYear);
+  resetListState();
+  getHomeworkList();
+}, { immediate: true });
+
 // 监听滚动加载更多
 const onScrollToLower = () => {
   getHomeworkList();
 };
+
+//监听窗口变化
+const handleResize = () => {
+  // #ifdef H5
+  windowWidth.value = document.documentElement.clientWidth;
+  // #endif
+
+  // #ifndef H5
+  const info = uni.getSystemInfoSync();
+  windowWidth.value = info.windowWidth;
+  // #endif
+};
+
+onMounted(() => {
+  // #ifdef H5
+  window.addEventListener('resize', handleResize);
+  // #endif
+});
+
+onBeforeUnmount(() => {
+  // #ifdef H5
+  window.removeEventListener('resize', handleResize);
+  // #endif
+});
 
 const handleItemClick = (item: HomeworkHistoryVO) => {
   if (!item.id) return;
