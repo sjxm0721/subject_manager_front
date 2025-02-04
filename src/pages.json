@@ -85,6 +85,14 @@
       "root": "pages/teacher",
       "pages": [
         {
+          "path": "PersonalInfo/index",
+          "style": {
+            "navigationBarTitleText": "信息管理",
+            "navigationStyle": "custom",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
           "path": "UserManagement/index",
           "style": {
             "navigationBarTitleText": "用户管理",
@@ -184,7 +192,7 @@
       },
       {
         "name": "教师端",
-        "path": "pages/main/index?path=/pages/teacher/UserManagement/index"
+        "path": "pages/main/index?path=/pages/teacher/PersonalInfo/index"
       }
     ]
   }

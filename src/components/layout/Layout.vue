@@ -159,6 +159,11 @@ const menuConfigs = {
   ],
   teacher: [
     {
+      title: '信息管理',
+      path: '/pages/teacher/PersonalInfo/index',
+      icon: 'info'
+    },
+    {
       title: '用户管理',
       path: '/pages/teacher/UserManagement/index',
       icon: 'staff'
@@ -221,6 +226,21 @@ const menuConfigs = {
     }
   ]
 } as const
+
+const LAST_PATH_KEY = 'last_visited_path'
+let isNavigating = false
+
+// 防抖函数
+const debounce = (fn: Function, delay: number) => {
+  let timer: NodeJS.Timeout | null = null
+  return (...args: any[]) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      fn.apply(null, args)
+    }, delay)
+  }
+}
+
 
 
 // 添加展开状态管理
@@ -323,31 +343,65 @@ const checkDevice = () => {
   }
 }
 
-// 路由跳转处理
-const handleMenuClick = (item: MenuItem) => {
-  if (item.path === '/pages/login/index') {
-    uni.reLaunch({ url: item.path })
+// 菜单点击处理方法
+const handleMenuClick = async (item: MenuItem) => {
+  if (isNavigating) {
+    console.log('导航正在进行中，跳过此次点击')
     return
   }
 
-  // 统一使用事件通知方式切换页面
-  uni.$emit('pageChange', item.path)
-  currentPath.value = item.path
+  if (item.path === '/pages/login/index') {
+    await uni.reLaunch({ url: item.path })
+    return
+  }
 
-  if (isMobile.value) {
-    mobileMenuOpen.value = false
+  try {
+    isNavigating = true
+
+    // 更新 URL
+    const newUrl = `/pages/main/index?path=${encodeURIComponent(item.path)}`
+    history.replaceState(null, '', newUrl)
+
+    // 保存路径
+    localStorage.setItem(LAST_PATH_KEY, item.path)
+
+    // 更新当前路径
+    currentPath.value = item.path
+
+    // 触发页面更新事件
+    uni.$emit('pageChange', item.path)
+
+    if (isMobile.value) {
+      mobileMenuOpen.value = false
+    }
+  } catch (error) {
+    console.error('导航失败:', error)
+  } finally {
+    // 设置延迟后才允许下一次导航
+    setTimeout(() => {
+      isNavigating = false
+    }, 100)
   }
 }
 
+
+
 // 修改退出登录处理
 const handleLogout = async () => {
+  if (isNavigating) return
+
   try {
+    isNavigating = true
+    localStorage.removeItem(LAST_PATH_KEY)
     await userStore.logout()
+
     uni.showToast({
       title: '退出成功',
       icon: 'success'
     })
-    uni.reLaunch({
+
+    // 使用 redirectTo 替代 reLaunch
+    await uni.redirectTo({
       url: '/pages/login/index'
     })
   } catch (error) {
@@ -355,6 +409,8 @@ const handleLogout = async () => {
       title: '退出失败',
       icon: 'error'
     })
+  } finally {
+    isNavigating = false
   }
 }
 
@@ -379,7 +435,7 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 
 .user-info {
   .user-info-content {

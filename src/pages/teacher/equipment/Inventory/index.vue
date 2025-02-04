@@ -225,7 +225,7 @@ const getDeviceList = async () => {
     total.value = res.total
   } catch (error) {
     uni.showToast({
-      title: '获取数据失败',
+      title: error?.message || '获取数据失败',
       icon: 'error'
     })
   } finally {
@@ -259,13 +259,77 @@ const previewImage = (url: string) => {
 
 // 查看说明书
 const viewHelp = (device: Device) => {
-  if (device.helpB) {
-    // 处理说明书查看逻辑
+  if (!device.helpB) {
     uni.showToast({
-      title: '查看说明书',
+      title: '暂无说明书',
       icon: 'none'
     })
+    return
   }
+
+  // H5环境直接打开链接
+  // #ifdef H5
+  window.open(device.helpB)
+  return
+  // #endif
+
+  // 小程序环境下载并打开
+  // #ifdef MP-WEIXIN
+  uni.showLoading({
+    title: '正在下载...'
+  })
+
+  // 下载文件
+  uni.downloadFile({
+    url: device.helpB,
+    success: (res) => {
+      if (res.statusCode === 200) {
+        // 保存文件到本地
+        uni.saveFile({
+          tempFilePath: res.tempFilePath,
+          success: (saveRes) => {
+            // 打开文件
+            uni.openDocument({
+              filePath: saveRes.savedFilePath,
+              success: () => {
+                uni.showToast({
+                  title: '打开成功',
+                  icon: 'success'
+                })
+              },
+              fail: (error) => {
+                uni.showToast({
+                  title: '打开文件失败',
+                  icon: 'error'
+                })
+              }
+            })
+          },
+          fail: (error) => {
+            uni.showToast({
+              title: '保存文件失败',
+              icon: 'error'
+            })
+          }
+        })
+      } else {
+        uni.showToast({
+          title: '下载失败',
+          icon: 'error'
+        })
+      }
+    },
+    fail: (error) => {
+      uni.showToast({
+        title: '下载失败',
+        icon: 'error'
+      })
+    },
+    complete: () => {
+      uni.hideLoading()
+    }
+  })
+  // #endif
 }
 
 // 显示器材详情
@@ -328,7 +392,7 @@ const confirmDeviceDetail = async () => {
     getDeviceList() // 刷新列表
   } catch (error) {
     uni.showToast({
-      title: '修改失败',
+      title: error?.message || '修改失败',
       icon: 'error'
     })
   } finally {

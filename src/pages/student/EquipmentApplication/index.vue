@@ -1,6 +1,3 @@
-# DeviceApply.vue
-# DeviceApply.vue
-
 <template>
   <view class="device-apply-container">
     <!-- Tab切换 -->
@@ -69,7 +66,7 @@
               </view>
               <view class="td td-desc ellipsis" :title="item.description">{{ item.description || '暂无描述' }}</view>
               <view class="td td-doc">
-                <view v-if="item.helpB" class="doc-icon" @click="downloadHelp(item)">下载</view>
+                <view v-if="item.helpB" class="doc-icon" @click="downloadHelp(item)">查看</view>
                 <view v-else>-</view>
               </view>
               <view class="td td-action">
@@ -134,7 +131,7 @@
 
               <view v-if="item.helpB" class="doc-section">
                 <text class="label">说明书</text>
-                <view class="doc-icon" @click="downloadHelp(item)">下载</view>
+                <view class="doc-icon" @click="downloadHelp(item)">查看</view>
               </view>
             </view>
           </view>
@@ -166,7 +163,12 @@
       <!-- 我的申请页面 -->
       <view v-show="activeTab === 'records'">
         <!-- PC端申请记录表格 -->
-        <view class="records-table pc-only">
+        <view v-if="applyRecords.length === 0" class="empty-state pc-only">
+          <view class="empty-content">
+            <text class="empty-text">申请记录为空</text>
+          </view>
+        </view>
+        <view v-else class="records-table pc-only">
           <view class="table-header">
             <view class="th th-name">设备名称</view>
             <view class="th th-count">申请数量</view>
@@ -223,7 +225,12 @@
         </view>
 
         <!-- 移动端申请记录卡片 -->
-        <view class="records-cards mobile-only">
+        <view v-if="applyRecords.length === 0" class="empty-state mobile-only">
+          <view class="empty-content">
+            <text class="empty-text">申请记录为空</text>
+          </view>
+        </view>
+        <view v-else class="records-cards mobile-only">
           <view
               v-for="record in applyRecords"
               :key="record.id"
@@ -348,7 +355,6 @@
           <button
               @click="handleApply"
               type="primary"
-              :disabled="!isValidForm"
           >申请</button>
           <button @click="closeApplyModal">取消</button>
         </view>
@@ -410,7 +416,7 @@ const fetchApplyRecords = async () => {
     recordsCurrentPage.value = recordsSearchParams.value.current
   } catch (error) {
     uni.showToast({
-      title: '获取申请记录失败',
+      title: error?.message || '获取申请记录失败',
       icon: 'none'
     })
   }
@@ -474,7 +480,6 @@ const handleCancelApply = async (record) => {
       fetchApplyRecords()
     }
   } catch (error) {
-    console.error('取消申请失败:', error)
     uni.showToast({
       title: error?.message || '取消申请失败',
       icon: 'none'
@@ -499,7 +504,6 @@ const handleReturnDevice = async (record) => {
       fetchApplyRecords()
     }
   } catch (error) {
-    console.error('申请归还失败:', error)
     uni.showToast({
       title: error?.message || '申请归还失败',
       icon: 'none'
@@ -534,13 +538,78 @@ const isValidForm = computed(() => {
 })
 
 // 下载说明书
-const downloadHelp = (device) => {
-  if (!device.helpB) return
-  // TODO: 调用下载接口
-  uni.showToast({
-    title: '开始下载说明书',
-    icon: 'success'
+const downloadHelp = (device:any) => {
+  if (!device.helpB) {
+    uni.showToast({
+      title: '暂无说明书',
+      icon: 'none'
+    })
+    return
+  }
+
+  // H5环境直接打开链接
+  // #ifdef H5
+  window.open(device.helpB)
+  return
+  // #endif
+
+  // 小程序环境下载并打开
+  // #ifdef MP-WEIXIN
+  uni.showLoading({
+    title: '正在下载...'
   })
+
+  // 下载文件
+  uni.downloadFile({
+    url: device.helpB,
+    success: (res) => {
+      if (res.statusCode === 200) {
+        // 保存文件到本地
+        uni.saveFile({
+          tempFilePath: res.tempFilePath,
+          success: (saveRes) => {
+            // 打开文件
+            uni.openDocument({
+              filePath: saveRes.savedFilePath,
+              success: () => {
+                uni.showToast({
+                  title: '打开成功',
+                  icon: 'success'
+                })
+              },
+              fail: (error) => {
+                uni.showToast({
+                  title: '打开文件失败',
+                  icon: 'error'
+                })
+              }
+            })
+          },
+          fail: (error) => {
+            uni.showToast({
+              title: '保存文件失败',
+              icon: 'error'
+            })
+          }
+        })
+      } else {
+        uni.showToast({
+          title: '下载失败',
+          icon: 'error'
+        })
+      }
+    },
+    fail: (error) => {
+      uni.showToast({
+        title: '下载失败',
+        icon: 'error'
+      })
+    },
+    complete: () => {
+      uni.hideLoading()
+    }
+  })
+  // #endif
 }
 
 
@@ -576,7 +645,7 @@ const fetchDeviceList = async () => {
     currentPage.value = searchParams.value.current
   } catch (error) {
     uni.showToast({
-      title: '获取数据失败',
+      title: error?.message || '获取数据失败',
       icon: 'none'
     })
   }
@@ -591,9 +660,8 @@ const getSubjectList = async () => {
       text: item.title
     }))
   } catch (error) {
-    console.error(error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'error'
     })
   }
@@ -628,8 +696,8 @@ const handleApply = async () => {
   // 表单验证
   if (!selectedDevice.value || !isValidApplyNum.value || !selectedSubjectId.value) {
     uni.showToast({
-      title: '请填写完整的申请信息',
-      icon: 'none'
+      title: '申请信息不完整或者申请数量不合法',
+      icon: 'error'
     })
     return
   }
@@ -663,7 +731,6 @@ const handleApply = async () => {
       }
     }
   } catch (error) {
-    console.error('申请失败:', error)
     uni.showToast({
       title: error?.message || '申请失败，请重试',
       icon: 'none'
@@ -873,6 +940,11 @@ watch(activeTab, (newTab) => {
             flex: 2;
             text-align: left;
             justify-content: flex-start;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 300px;
+            padding-right: 16px;
           }
 
           &.td-doc {
@@ -1585,6 +1657,28 @@ watch(activeTab, (newTab) => {
           font-size: 13px;
         }
       }
+    }
+  }
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 20px;
+
+  .empty-content {
+    text-align: center;
+    padding: 32px;
+
+    .empty-text {
+      font-size: 16px;
+      color: #999;
+      line-height: 1.5;
     }
   }
 }

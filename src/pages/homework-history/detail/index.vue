@@ -131,9 +131,8 @@ const getDetail = async (homeworkId: string) => {
     const res = await homeworkApi.getHomeworkDetail(homeworkId);
     homework.value = res;
   } catch (error) {
-    console.error('获取作品详情失败:', error);
     uni.showToast({
-      title: '获取详情失败',
+      title: error?.message || '获取详情失败',
       icon: 'error'
     });
   } finally {
@@ -170,10 +169,8 @@ const previewOfficeFile = (url: string) => {
         filePath: res.tempFilePath,
         showMenu: true,
         success: function () {
-          console.log('打开文档成功');
         },
         fail: function(err) {
-          console.error('打开文档失败', err);
           uni.showToast({
             title: '打开文档失败',
             icon: 'none'
@@ -182,7 +179,6 @@ const previewOfficeFile = (url: string) => {
       });
     },
     fail: function(err) {
-      console.error('下载文档失败', err);
       uni.showToast({
         title: '下载文档失败',
         icon: 'none'
@@ -215,10 +211,8 @@ const previewPdf = (url: string) => {
         filePath: res.tempFilePath,
         showMenu: true,
         success: function () {
-          console.log('打开PDF成功');
         },
         fail: function(err) {
-          console.error('打开PDF失败', err);
           uni.showToast({
             title: '打开PDF失败',
             icon: 'none'
@@ -227,7 +221,6 @@ const previewPdf = (url: string) => {
       });
     },
     fail: function(err) {
-      console.error('下载PDF失败', err);
       uni.showToast({
         title: '下载PDF失败',
         icon: 'none'
@@ -263,14 +256,35 @@ const downloadSource = (url: string) => {
 
 // 返回上一页
 const handleBack = () => {
+  // 获取默认路径
+  const getDefaultPath = () => {
+    if (!userStore.userInfo) return '/pages/login/index'
+
+    switch (userStore.userInfo.userRole) {
+      case 1:
+        return '/pages/student/PersonalInfo/index'
+      case 2:
+        return '/pages/teacher/PersonalInfo/index'
+      case 3:
+        return '/pages/guest/GuestInfo/index'
+      default:
+        return '/pages/login/index'
+    }
+  }
+
+  // 尝试返回上一页
   uni.navigateBack({
     fail: () => {
-      // 如果返回失败（没有上一页），则跳转到历年作品列表页
-      uni.redirectTo({
-        url: '/pages/homework/list'
-      });
+      // 返回失败时，使用默认路径
+      const defaultPath = getDefaultPath()
+      const cleanPath = defaultPath.startsWith('/') ? defaultPath.slice(1) : defaultPath
+
+      // 跳转到主页面，并传入实际路径
+      uni.reLaunch({
+        url: `/pages/main/index?path=${encodeURIComponent(cleanPath)}`
+      })
     }
-  });
+  })
 };
 
 // 监听设备尺寸变化

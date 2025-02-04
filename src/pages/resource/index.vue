@@ -24,9 +24,8 @@ onLoad((options) => {
     try {
       resource.value = JSON.parse(decodeURIComponent(options.resource));
     } catch (error) {
-      console.error('解析资源信息失败:', error);
       uni.showToast({
-        title: '文件预览失败',
+        title: error?.message || '文件预览失败',
         icon: 'none'
       });
     }

@@ -103,8 +103,10 @@
         <textarea
             v-model="formData.hardwareTech"
             class="content-textarea"
-            placeholder="请输入硬件技术说明"
+            placeholder="请输入硬件技术说明(不超过500字)"
+            maxlength="500"
         />
+        <text class="word-count">{{formData.hardwareTech.length}}/500</text>
       </view>
 
       <view class="form-item">
@@ -112,8 +114,10 @@
         <textarea
             v-model="formData.softwareTech"
             class="content-textarea"
-            placeholder="请输入软件技术说明"
+            placeholder="请输入软件技术说明(不超过500字)"
+            maxlength="500"
         />
+        <text class="word-count">{{formData.softwareTech.length}}/500</text>
       </view>
     </view>
 
@@ -137,6 +141,15 @@
               </text>
               <text class="delete-btn" @tap="handleDeleteFile(type, index)">×</text>
             </view>
+          </view>
+
+          <view class="progress-bar" v-if="uploadProgress[type] > 0">
+            <view
+                class="progress-inner"
+                :class="{ 'uploading': uploadProgress[type] > 0 && uploadProgress[type] < 100 }"
+                :style="{ width: uploadProgress[type] + '%' }"
+            ></view>
+            <text class="progress-text">{{ Math.floor(uploadProgress[type]) }}%</text>
           </view>
 
           <!-- #ifdef H5 || APP-PLUS -->
@@ -242,11 +255,27 @@ interface FileList {
 
 // 上传配置
 const uploadConfig = {
-  word: { label: 'WORD文档', accept: '.doc,.docx' },
+  word: { label: 'WORD文档', accept: '.docx' },
   pdf: { label: 'PDF文档', accept: '.pdf' },
   source: { label: '源文件', accept: '.zip,.rar,.7z' },
   mp4: { label: 'MP4演示视频', accept: '.mp4' }
 }
+
+// 添加上传进度的接口定义
+interface UploadProgress {
+  word: number;
+  pdf: number;
+  source: number;
+  mp4: number;
+}
+
+// 添加上传进度的状态
+const uploadProgress = reactive<UploadProgress>({
+  word: 0,
+  pdf: 0,
+  source: 0,
+  mp4: 0
+})
 
 
 // 状态定义
@@ -262,7 +291,6 @@ const props = defineProps({
 
 const loadHomeworkData = async () => {
   try {
-    console.log("加载作业信息", props.homeworkId)
     if (!props.homeworkId) return
 
     const res = await homeworkApi.getMyHomeworkDetail(props.homeworkId)
@@ -307,9 +335,8 @@ const loadHomeworkData = async () => {
       }
     }
   } catch (error) {
-    console.error('加载作业数据失败：', error)
     uni.showToast({
-      title: '加载作业数据失败',
+      title: error?.message || '加载作业数据失败',
       icon: 'none'
     })
   }
@@ -447,13 +474,11 @@ const editorInit = {
             }
           },
           fail: (error) => {
-            console.error('图片上传失败:', error);
             reject('上传失败');
           }
         });
         // #endif
       } catch (error) {
-        console.error('图片上传错误:', error);
         reject('上传失败');
       }
     });
@@ -488,7 +513,6 @@ const onEditorReady = async (type: 'background' | 'systemDesign') => {
       }
     }).exec();
   } catch (error) {
-    console.error('编辑器初始化失败：', error);
   }
   // #endif
 };
@@ -499,7 +523,6 @@ const onEditorInput = (e: any, type: 'background' | 'systemDesign') => {
 
 const handleEditorClick = (e: Event) => {
   // 处理编辑器点击事件
-  console.log('Editor clicked:', e);
 };
 
 
@@ -512,9 +535,8 @@ const getSubjectList = async () => {
       text: item.title
     }))
   } catch (error) {
-    console.error('获取课程列表失败：', error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'error'
     })
   }
@@ -566,7 +588,6 @@ const handleSelectFileMP = async (type: keyof FileList) => {
       handleFileUpload(type, res.tempFiles[0])
     }
   } catch (error) {
-    console.error('选择文件失败：', error)
   }
   // #endif
 }
@@ -602,7 +623,6 @@ const handleFileChange = async (type: keyof FileList, e: Event) => {
         throw new Error('上传失败')
       }
     } catch (error: any) {
-      console.error('文件上传失败：', error)
       uni.showToast({
         title: error.message || '上传失败',
         icon: 'none'
@@ -619,6 +639,16 @@ const handleFileChange = async (type: keyof FileList, e: Event) => {
 }
 const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | File) => {
   uploading.value = true;
+  // 重置进度
+  uploadProgress[type] = 0;
+
+  // 模拟进度增长
+  const progressInterval = setInterval(() => {
+    if (uploadProgress[type] < 90) {
+      uploadProgress[type] += Math.random() * 10;
+    }
+  }, 200);
+
   try {
     const formData = new FormData();
 
@@ -647,25 +677,38 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
         if(uploadRes.statusCode === 200) {
           const data = JSON.parse(uploadRes.data);
           if(data.code === 0) {
+            // 清除进度模拟定时器
+            clearInterval(progressInterval);
+            // 设置为100%
+            uploadProgress[type] = 100;
+
             fileList[type].push({
               name: file instanceof File ? file.name : file.name,
               url: data.data
             });
+
+            // 上传成功后1秒清除进度条
+            setTimeout(() => {
+              uploadProgress[type] = 0;
+            }, 1000);
           } else {
-            throw new Error(data.message || '上传失败');
+            clearInterval(progressInterval);
+            uploadProgress[type] = 0;
+            uni.showToast({
+              title: data.message || '上传失败',
+              icon: 'none'
+            });
           }
-        } else {
-          throw new Error('上传失败');
         }
       },
       fail: (error) => {
-        console.error('文件上传失败:', error);
+        clearInterval(progressInterval);
+        uploadProgress[type] = 0;
         throw new Error('上传失败');
       }
     });
 
   } catch (error: any) {
-    console.error('文件上传失败：', error);
     uni.showToast({
       title: error.message || '上传失败',
       icon: 'none'
@@ -689,6 +732,22 @@ const handleSubmit = async () => {
   }
 
   // 添加内容简介字数验证
+  if (formData.hardwareTech.length > 500) {
+    uni.showToast({
+      title: '硬件技术不能超过500字',
+      icon: 'none'
+    })
+    return
+  }
+
+  if (formData.softwareTech.length > 500) {
+    uni.showToast({
+      title: '软件技术不能超过500字',
+      icon: 'none'
+    })
+    return
+  }
+
   if (formData.brief.length > 300) {
     uni.showToast({
       title: '内容简介不能超过300字',
@@ -717,7 +776,6 @@ const handleSubmit = async () => {
       attachmentMp4: fileList.mp4.map(f => f.url).join(',')
     }
 
-    console.log(submitData)
     const res = await homeworkApi.addOrUpdateHomework(submitData)
     if (res) {
       uni.showToast({
@@ -730,7 +788,6 @@ const handleSubmit = async () => {
       throw new Error('提交失败')
     }
   } catch (error: any) {
-    console.error('提交失败：', error)
     uni.showToast({
       title: error.message || '提交失败',
       icon: 'none'
@@ -918,10 +975,73 @@ onUnmounted(() => {
       padding: 16px;
       border: 1px solid #e4e7ed;
 
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background-color: #e9ecef;
+        border-radius: 2px;
+        margin: 8px 0;
+        position: relative;
+        overflow: hidden;
+
+        .progress-inner {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          background-color: #409eff;
+          border-radius: 2px;
+          transition: all 0.3s linear;
+
+          // 添加动画效果
+          &.uploading {
+            background-image: linear-gradient(
+                    -45deg,
+                    rgba(255, 255, 255, 0.2) 25%,
+                    transparent 25%,
+                    transparent 50%,
+                    rgba(255, 255, 255, 0.2) 50%,
+                    rgba(255, 255, 255, 0.2) 75%,
+                    transparent 75%,
+                    transparent
+            );
+            background-size: 16px 16px;
+            animation: progressStripes 1s linear infinite;
+          }
+        }
+
+        .progress-text {
+          position: absolute;
+          right: 0;
+          top: -20px;
+          font-size: 12px;
+          color: #909399;
+        }
+      }
+
+      @keyframes progressStripes {
+        0% {
+          background-position: 0 0;
+        }
+        100% {
+          background-position: 16px 0;
+        }
+      }
+
       @media screen and (max-width: 768px) {
         padding: 12px 8px;
         margin: 0;
         width: 100%;
+
+        .progress-bar {
+          height: 3px;
+          margin: 6px 0;
+
+          .progress-text {
+            font-size: 11px;
+            top: -18px;
+          }
+        }
 
         .file-list {
           max-height: 100px;

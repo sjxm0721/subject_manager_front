@@ -6,36 +6,6 @@
 
       <view class="info-form">
         <text class="section-title">个人信息</text>
-        <view class="form-group">
-          <text class="label">课程选择</text>
-          <select v-model="selectedSubject" class="course-select">
-            <option value="">请选择课程</option>
-            <option
-                v-for="subject in subjectList"
-                :key="subject.value"
-                :value="subject.value"
-            >
-              {{ subject.text }}
-            </option>
-          </select>
-        </view>
-
-        <view class="form-group">
-          <text class="label">小组编号</text>
-          <view class="group-info">
-            <text>第</text>
-            <input
-                v-model="form.groupNum"
-                type="text"
-                class="group-input"
-                maxlength="2"
-                disabled
-                @input="validategroupNum"
-            />
-            <text>组</text>
-          </view>
-        </view>
-
 
         <view class="form-section">
           <view class="form-item required">
@@ -53,17 +23,6 @@
             <u-input
                 v-model="form.userAccount"
                 placeholder="请输入账号"
-                :border="false"
-                class="custom-input"
-                disabled
-            />
-          </view>
-
-          <view class="form-item required">
-            <text class="label">班级</text>
-            <u-input
-                v-model="form.className"
-                placeholder="请输入班级"
                 :border="false"
                 class="custom-input"
                 disabled
@@ -144,33 +103,21 @@
 </template>
 
 <script setup lang="ts">
-import { studentApi } from "@/api/student"
-import type { StudentGroupNumQueryRequest } from '@/types/student'
 import { ref, reactive, onMounted, onBeforeUnmount,nextTick,watch } from 'vue'
 import { useUserStore } from '@/store/user'
 import type { UserInfo } from '@/types/user'
-import {subjectApi} from "@/api/subject";
 
 const userStore = useUserStore()
 const isMobile = ref(false)
 const saving = ref(false)
 const popupRef = ref<any>(null)
 
-// 课程列表
-const subjectList = ref<{value: string, text: string}[]>([])
-const selectedSubject = ref<string>('')
 
 // 表单数据
-interface FormState extends Partial<UserInfo> {
-  groupNum?: string
-}
-
-const form = reactive<FormState>({
+const form = reactive<Partial<UserInfo>>({
   userName: userStore.userInfo?.userName || '',
   userAccount: userStore.userInfo?.userAccount || '',
   phone: userStore.userInfo?.phone || '',
-  groupNum: '',
-  className: userStore.userInfo?.className || '',
 })
 
 // 检查设备类型
@@ -178,66 +125,6 @@ const checkDevice = () => {
   isMobile.value = window.innerWidth <= 768
 }
 
-// 获取课程列表
-// 获取课程列表
-const getSubjectList = async () => {
-  try {
-    const res = await subjectApi.getSubjectListByStu()
-    subjectList.value = res.map(item => ({
-      value: item.id,
-      text: item.title
-    }))
-
-    // 如果有默认选中的课程或者列表有值，获取组号
-    if (userStore.userInfo?.subjectId) {
-      selectedSubject.value = userStore.userInfo.subjectId
-      await getGroupNum(userStore.userInfo.subjectId)
-    } else if (subjectList.value.length > 0) {
-      selectedSubject.value = subjectList.value[0].value
-      await getGroupNum(subjectList.value[0].value)
-    }
-  } catch (error) {
-    uni.showToast({
-      title: error?.message || '获取课程列表失败',
-      icon: 'error'
-    })
-  }
-}
-
-// 监听课程选择变化
-watch(() => selectedSubject.value, async (newValue) => {
-  if (newValue) {
-    await getGroupNum(newValue)
-  } else {
-    form.groupNum = ''
-  }
-})
-
-const getGroupNum = async (subjectId: string) => {
-  try {
-    if (!userStore.userInfo?.id || !subjectId) return
-
-    const params: StudentGroupNumQueryRequest = {
-      studentId: userStore.userInfo.id,
-      subjectId: subjectId
-    }
-    const groupNum = await studentApi.getStudentGroupNum(params)
-    form.groupNum = String(groupNum).padStart(2, '0') // 保证两位数显示
-  } catch (error) {
-    uni.showToast({
-      title: error?.message || '获取组号失败',
-      icon: 'error'
-    })
-  }
-}
-
-// 验证组号输入
-const validategroupNum = (e: any) => {
-  const value = e.target.value
-  if (!/^\d{0,2}$/.test(value)) {
-    form.groupNum = value.replace(/[^\d]/g, '').slice(0, 2)
-  }
-}
 
 const handleSave = async () => {
   if (!form.userName) {
@@ -253,8 +140,7 @@ const handleSave = async () => {
     // 更新用户信息，包括选中的课程ID
     await userStore.updateUserInfo({
       userName: form.userName,
-      phone: form.phone,
-      subjectId: selectedSubject.value, // 添加课程ID
+      phone: form.phone
     })
 
     uni.showToast({
@@ -275,7 +161,6 @@ const handleSave = async () => {
 onMounted(() => {
   checkDevice()
   window.addEventListener('resize', checkDevice)
-  getSubjectList() // 加载课程列表并获取组号
 
   // 初始化其他表单数据
   if (userStore.userInfo) {
@@ -480,7 +365,7 @@ const handlePasswordChange = async () => {
 
 // 在 style 中添加以下样式
 .password-popup {
-  width: 400px;
+  width: 320px;
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
@@ -547,28 +432,19 @@ const handlePasswordChange = async () => {
 
   .popup-footer {
     display: flex;
-    padding: 12px 16px;
+    padding: 20px;
     border-top: 1px solid #eee;
-	gap: 12px;
 
     .btn {
-    flex: 1;
-    height: 40px;
-    line-height: 40px;
-    border-radius: 4px;
-    font-size: 15px;
-    min-width: 100px; // 确保按钮足够宽
-    text-align: center;
-    padding: 0; // 移除内边距
-    margin: 0; // 移除外边距
-    border: none;
-
-
-    &.cancel-btn,
-    &.confirm-btn {
-      width: auto;
-      min-width: 80px;
-    }
+      flex: 1;
+      height: 36px;
+      line-height: 36px;
+      text-align: center;
+      border-radius: 4px;
+      font-size: 14px;
+      margin: 0 8px;
+      transition: all 0.3s;
+      border: none;
 
       &.cancel-btn {
         background: #f5f7fa;
@@ -606,12 +482,11 @@ const handlePasswordChange = async () => {
     }
 
     .popup-footer {
-      padding: 12px;
+      padding: 16px;
 
       .btn {
-		  min-width: 80px;
-        padding: 0 20px; // 增加移动端按钮内边距
-        font-size: 16px; // 增大字号
+        height: 40px;
+        line-height: 40px;
       }
     }
   }

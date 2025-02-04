@@ -63,7 +63,9 @@
           >
             登录
           </u-button>
-
+          <view class="captcha-container" v-show="captchaVisible">
+            <view id="captcha-div" class="captcha-content"></view>
+          </view>
           <view class="login-options">
             <text @tap="handleForgotPassword">忘记密码</text>
             <text @tap="handleRegister">注册账号</text>
@@ -81,12 +83,16 @@ import { useUserStore } from '@/store/user'
 const userStore = useUserStore()
 const loginForm = reactive({
   userAccount: '',
-  userPassword: ''
+  userPassword: '',
+  captchaToken: ''  // 添加验证码token存储
 })
+
 
 const loading = ref(false)
 const isMobile = ref(false)
-const loginFormRef = ref() // 不需要指定类型
+const loginFormRef = ref()
+const captchaVisible = ref(false)  // 控制验证码显示
+
 
 const rules = {
   userAccount: [
@@ -102,6 +108,104 @@ onMounted(() => {
   isMobile.value = systemInfo.windowWidth <= 768
 })
 
+// 验证码初始化和处理
+const initCaptcha = () => {
+  const captchaConfig = {
+    requestCaptchaDataUrl: "/api/user/gen?type=RANDOM",
+    validCaptchaUrl: "/api/user/check",
+    bindEl: "#captcha-div",
+
+    validSuccess: async (res: any, c: any, t: any) => {
+      loginForm.captchaToken = res.data.token
+      t.destroyWindow()
+      captchaVisible.value = false
+      // 验证成功后直接进行登录
+      await performLogin()
+    },
+    btnCloseFun: (el:any, tac:any) => {
+      tac.destroyWindow();
+      captchaVisible.value = false
+      loading.value = false
+    }
+  }
+  let style = {
+    logoUrl: null// 去除logo
+  }
+  // 确保在web环境下运行并且资源已加载
+  // #ifdef H5
+  if (window.initTAC) {
+    // 使用完整的资源路径
+    window.initTAC("/static/captcha/tac", captchaConfig,style)
+        .then(tac => {
+          if (tac) {
+            tac.init()
+          } else {
+            loading.value = false
+          }
+        })
+        .catch(error => {
+          loading.value = false
+          uni.showToast({
+            title: '验证码加载失败',
+            icon: 'none'
+          })
+        })
+  }
+  // #endif
+}
+
+// 显示验证码
+const showCaptcha = () => {
+  captchaVisible.value = true
+  // 增加延迟确保DOM已更新
+  setTimeout(() => {
+    const captchaDiv = document.querySelector('#captcha-div')
+    if (captchaDiv) {
+      initCaptcha()
+    } else {
+      loading.value = false
+    }
+  }, 300) // 增加延迟时间
+}
+
+// 执行登录操作
+const performLogin = async () => {
+  try {
+    const res = await userStore.login({
+      userAccount: loginForm.userAccount,
+      userPassword: loginForm.userPassword,
+      captchaToken: loginForm.captchaToken
+    })
+
+    uni.showToast({
+      title: '登录成功',
+      icon: 'success'
+    })
+
+    // 根据角色跳转
+    let initialPath
+    if (userStore.userInfo?.userRole === 1) {
+      initialPath = '/pages/student/PersonalInfo/index'
+    } else if(userStore.userInfo?.userRole === 2) {
+      initialPath = '/pages/teacher/PersonalInfo/index'
+    } else {
+      initialPath = '/pages/guest/GuestInfo/index'
+    }
+
+    uni.reLaunch({
+      url: `/pages/main/index?path=${encodeURIComponent(initialPath)}`
+    })
+  } catch (error: any) {
+    uni.showToast({
+      title: error?.message || '登录失败',
+      icon: 'none'
+    })
+    loading.value = false
+    loginForm.userAccount = ''
+    loginForm.userPassword = ''
+  }
+}
+
 const handleLogin = async () => {
   if (!loginFormRef.value) return
 
@@ -110,37 +214,24 @@ const handleLogin = async () => {
     const valid = await loginFormRef.value.validate()
 
     if (valid) {
-      const res = await userStore.login({
-        userAccount: loginForm.userAccount,
-        userPassword: loginForm.userPassword
-      })
-
-      uni.showToast({
-        title: '登录成功',
-        icon: 'success'
-      })
-
-      // 修改跳转逻辑
-      let initialPath
-      if (userStore.userInfo?.userRole === 1) {
-        initialPath = '/pages/student/PersonalInfo/index'
-      } else if(userStore.userInfo?.userRole === 2) {
-        initialPath = '/pages/teacher/UserManagement/index'
-      } else {
-        initialPath = '/pages/guest/GuestInfo/index'
+      // 在web端显示验证码
+      // #ifdef H5
+      if (!loginForm.captchaToken) {
+        showCaptcha()
+        return // 重要：等待验证码验证成功后再继续
       }
+      // #endif
 
-      // 统一使用 main 页面作为容器
-      uni.reLaunch({
-        url: `/pages/main/index?path=${encodeURIComponent(initialPath)}`
-      })
+      // 在非web端直接登录
+      // #ifndef H5
+      await performLogin()
+      // #endif
     }
   } catch (error: any) {
     uni.showToast({
-      title: error?.message || '登录失败',
+      title: error?.message || '验证失败',
       icon: 'none'
     })
-  } finally {
     loading.value = false
   }
 }
@@ -303,4 +394,25 @@ const handleRegister = () => {
 }
 
 // #endif
+
+.captcha-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+
+  .captcha-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+  }
+}
 </style>

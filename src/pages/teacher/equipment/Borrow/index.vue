@@ -264,7 +264,7 @@ const handleApprovalConfirm = async () => {
     getBorrowList() // 刷新列表
   } catch (error) {
     uni.showToast({
-      title: '操作失败',
+      title: error?.message || '操作失败',
       icon: 'error'
     })
   }
@@ -281,7 +281,7 @@ const handleConfirmReturn = async (item: any) => {
     getBorrowList() // 刷新列表
   } catch (error) {
     uni.showToast({
-      title: '确认失败',
+      title: error?.message || '确认失败',
       icon: 'error'
     })
   }
@@ -293,12 +293,11 @@ const getSubjectList = async () => {
     const res = await subjectApi.getSubjectList()
     subjectList.value = res.map(item => ({
       value: item.id,
-      text: item.title
+      text: item.title + ' - ' + item.grade
     }))
   } catch (error) {
-    console.error(error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'error'
     })
   }
@@ -349,9 +348,8 @@ const getBorrowList = async () => {
     borrowList.value = res.records
     total.value = res.total
   } catch (error) {
-    console.error(error)
     uni.showToast({
-      title: '获取数据失败',
+      title: error?.message || '获取数据失败',
       icon: 'error'
     })
   } finally {
@@ -395,7 +393,7 @@ const handleExport = async () => {
     })
   } catch (error) {
     uni.showToast({
-      title: '导出失败',
+      title: error?.message || '导出失败',
       icon: 'error'
     })
   }

@@ -52,7 +52,7 @@ const handleBackHome = () => {
   if (userStore.userInfo?.userRole === 1) {
     homePath = '/pages/student/PersonalInfo/index'
   } else if (userStore.userInfo?.userRole === 2) {
-    homePath = '/pages/teacher/UserManagement/index'
+    homePath = '/pages/teacher/PersonalInfo/index'
   } else {
     homePath = '/pages/guest/GuestInfo/index'
   }

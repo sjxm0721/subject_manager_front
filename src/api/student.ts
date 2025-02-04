@@ -35,5 +35,10 @@ export const studentApi = {
         return http.get<StudentVO>('/student/detail',{
             id: params
         })
+    },
+    resetStudentPwd(params: string){
+        return http.get<boolean>('/student/reset-pwd',{
+            id: params
+        })
     }
 }

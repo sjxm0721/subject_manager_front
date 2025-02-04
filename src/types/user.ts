@@ -1,6 +1,7 @@
 export interface LoginRequest {
   userAccount: string
   userPassword: string
+  captchaToken?: string
 }
 
 export interface RegisterRequest {

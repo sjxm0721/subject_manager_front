@@ -8,6 +8,7 @@ export interface GroupDetail {
     subjectId: number
     subjectName: string
     groupNum: number
+    grade: string
     subjectStudentId: number
 }
 

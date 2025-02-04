@@ -151,9 +151,8 @@ const getHomeworkList = async () => {
       current.value++;
     }
   } catch (error) {
-    console.error('获取作品列表失败:', error);
     uni.showToast({
-      title: '获取列表失败',
+      title: error?.message ||'获取列表失败',
       icon: 'error'
     });
   } finally {
@@ -164,7 +163,6 @@ const getHomeworkList = async () => {
 
 
 watch(() => props.year, (newYear) => {
-  console.log('Year changed to:', newYear);
   resetListState();
   getHomeworkList();
 }, { immediate: true });
@@ -218,9 +216,8 @@ const handleRecommendChange = async (homework: HomeworkHistoryVO, value: boolean
       icon: 'success'
     });
   } catch (error) {
-    console.error('更新推荐状态失败:', error);
     uni.showToast({
-      title: '操作失败',
+      title: error?.message || '操作失败',
       icon: 'error'
     });
   }

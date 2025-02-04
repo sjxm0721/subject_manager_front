@@ -9,6 +9,7 @@ const service = axios.create({
     timeout: 50000
 })
 
+
 // 请求拦截器
 service.interceptors.request.use(
     (config) => {
@@ -85,7 +86,7 @@ service.interceptors.response.use(
                         })
                     } catch (e) {
                         uni.showToast({
-                            title: '导出失败',
+                            title: e?.message || '导出失败',
                             icon: 'error',
                             duration: 2000
                         })
@@ -95,11 +96,19 @@ service.interceptors.response.use(
                 reader.readAsText(error.response.data)
             })
         }
-        uni.showToast({
-            title: error.message || '网络异常',
-            icon: 'error',
-            duration: 2000
-        })
+
+        // token 过期
+        if (error.response?.status === 401) {
+            const userStore = useUserStore()
+            uni.showModal({
+                title: '提示',
+                content: '登录已过期，请重新登录',
+                showCancel: false,
+                success: () => {
+                    userStore.logout()
+                }
+            })
+        }
         return Promise.reject(error)
     }
 )

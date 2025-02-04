@@ -63,6 +63,8 @@
               v-for="item in homeworkList"
               :key="item.id"
               class="list-item"
+              @tap="(e) => handleItemClick(e, item)"
+              :class="{ 'clickable': item.isCorrect }"
           >
             <text class="item-cell">{{ item.subjectName }}</text>
             <text class="item-cell">{{ item.groupNum }}</text>
@@ -74,14 +76,14 @@
               <button
                   v-if="item.isCorrect"
                   class="action-btn view-btn"
-                  @click="handleViewGrade(item)"
+                  @tap.stop="handleViewGrade(item)"
               >
                 查看批改情况
               </button>
               <button
                   v-else
                   class="action-btn edit-btn"
-                  @click="handleEdit(item.id)"
+                  @tap.stop="handleEdit(item.id)"
               >
                 修改
               </button>
@@ -192,6 +194,28 @@ const getSelectedStatus = computed(() =>
 )
 
 // Methods
+
+const handleItemClick = (e: any, homework: HomeworkGradeVO) => {
+  // 获取点击的元素
+  const target = e?.target
+  if (!target) return
+
+  // 检查是否点击了按钮
+  if (target.className && (
+      target.className.includes('action-btn') ||
+      target.className.includes('view-btn') ||
+      target.className.includes('edit-btn'))
+  ) {
+    return
+  }
+
+  // 只有已批改的作业才能跳转到详情页
+  if (homework.isCorrect) {
+    uni.navigateTo({
+      url: `/pages/homework-history/detail/index?id=${homework.id}`
+    });  }
+}
+
 const handleTabChange = (tab: string) => {
   activeTab.value = tab
   if (tab === 'my-homework') {
@@ -215,9 +239,8 @@ const fetchSubjectList = async () => {
       }))
     ]
   } catch (error) {
-    console.error('获取课程列表失败：', error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'none'
     })
   }
@@ -236,9 +259,8 @@ const fetchHomeworkList = async () => {
     homeworkList.value = res.records
     total.value = res.total
   } catch (error) {
-    console.error('获取作业列表失败：', error)
     uni.showToast({
-      title: '获取作业列表失败',
+      title: error?.message || '获取作业列表失败',
       icon: 'none'
     })
   }
@@ -578,5 +600,15 @@ onMounted(() => {
   }
 }
 /* #endif */
+
+.list-item {
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+  }
+}
 
 </style>

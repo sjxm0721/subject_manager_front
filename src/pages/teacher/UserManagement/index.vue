@@ -58,6 +58,7 @@
           <view class="col action-col">
             <text class="action-btn info" @click="showGroupInfo(item)">分组</text>
             <text class="action-btn edit" @click="handleEdit(item)">编辑</text>
+            <text class="action-btn reset" @click="handleResetPwd(item)">重置密码</text>
             <text class="action-btn delete" @click="handleDelete(item)">删除</text>
           </view>
         </view>
@@ -103,7 +104,7 @@
           </view>
 
           <view class="form-item">
-            <text class="label">学号</text>
+            <text class="label">学号 <text class="required">*</text></text>
             <u-input
                 v-model="form.userAccount"
                 placeholder="请输入学号"
@@ -113,7 +114,7 @@
           </view>
 
           <view class="form-item">
-            <text class="label">姓名</text>
+            <text class="label">姓名 <text class="required">*</text></text>
             <u-input
                 v-model="form.userName"
                 placeholder="请输入姓名"
@@ -160,7 +161,7 @@
                     class="group-item"
                 >
                   <view class="group-info">
-                    <text class="group-name">{{group.subjectName}} - 第{{group.groupNum}}组</text>
+                    <text class="group-name">{{group.subjectName}} - {{group.grade}} - 第{{group.groupNum}}组</text>
                     <view
                         class="delete-btn"
                         @click="handleDeleteGroup(group.subjectStudentId!.toString())"
@@ -177,7 +178,7 @@
                   <text class="form-label">选择课程</text>
                   <uni-data-select
                       v-model="newGroup.subjectId"
-                      :localdata="subjectList"
+                      :localdata="filterSubjectList(form)"
                       label="text"
                       value="value"
                       placeholder="请选择课程"
@@ -243,7 +244,7 @@
                 <button class="action-btn" @click="clearFile">取消</button>
               </view>
             </view>
-            <view class="divider">或</view>
+            <view class="divider"></view>
           </template>
 
 
@@ -288,6 +289,7 @@ import { studentApi } from '@/api/student'
 import  {debounce}  from 'lodash'
 import {subjectApi} from "@/api/subject";
 import {subjectStudentApi} from "@/api/subjectStudent";
+import {Subject} from "@/types/subject";
 
 const popupRef = ref<any>(null)
 const saving = ref(false)
@@ -321,7 +323,8 @@ const form = reactive({
   userAccount: '',
   userName: '',
   uploadAble: 0,
-  checkAble: 0
+  checkAble: 1,
+  groupDetails: []
 })
 
 const currentStudentId = ref<number>()
@@ -350,6 +353,12 @@ const handleAddGroup = async (subjectId: number, groupNum: number) => {
       icon: 'success'
     })
 
+    newGroup.subjectId = ''
+    newGroup.groupNum = ''
+    newGroup.subjectName = ''
+
+
+
     // 刷新分组信息
     await getStudentList()
 
@@ -364,6 +373,47 @@ const handleAddGroup = async (subjectId: number, groupNum: number) => {
       icon: 'error'
     })
   }
+}
+
+// 重置密码
+const handleResetPwd = async (student: StudentVO) => {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      uni.showModal({
+        title: '提示',
+        content: '确认重置该用户的密码吗？',
+        success: (res) => {
+          resolve(res.confirm)
+        },
+        fail: reject
+      })
+    })
+
+    // 如果用户点击取消，直接返回
+    if (!result) {
+      return
+    }
+
+    // 调用重置密码 API
+    await studentApi.resetStudentPwd(student.id!.toString())
+
+    uni.showToast({
+      title: '重置密码成功',
+      icon: 'success'
+    })
+  } catch (error: any) {
+    uni.showToast({
+      title: error.message || '重置密码失败',
+      icon: 'error'
+    })
+  }
+}
+
+const filterSubjectList = (form: any) => {
+  const filteredSubjects = subjectList.value.filter(subject => {
+    return form.groupDetails.every(group => group.subjectId != subject.value);
+  });
+  return filteredSubjects;
 }
 
 const handleDeleteGroup = async (subjectStudentId: string) => {
@@ -403,7 +453,6 @@ const handleDeleteGroup = async (subjectStudentId: string) => {
     await getStudentList()
     if (isEdit.value && currentStudentId.value) {
       const studentDetail = await studentApi.getStudentDetail(currentStudentId.value)
-      console.log(studentDetail)
       handleEdit(studentDetail)
     }
 
@@ -434,20 +483,13 @@ const getStudentList = async () => {
     studentList.value = res.records
     total.value = res.total
   } catch (error) {
-    console.error(error)
     uni.showToast({
-      title: '获取列表失败',
+      title: error?.message || '获取列表失败',
       icon: 'error'
     })
   }
 }
 
-// 触发文件选择
-const triggerFileInput = () => {
-  if (fileInput.value) {
-    fileInput.value.click()
-  }
-}
 
 
 // 处理文件选择
@@ -543,10 +585,30 @@ const handleSearch = debounce(() => {
 // 下载模板
 const downloadTemplate = () => {
   // 替换为实际的模板下载地址
-  const templateUrl = 'https://bilibilipropost.oss-cn-beijing.aliyuncs.com/studentImport%20%281%29.xlsx'
+  const templateUrl = 'https://bilibilipropost.oss-cn-beijing.aliyuncs.com/studentImport.xlsx'
   window.open(templateUrl)
 }
 
+
+const validateForm = () => {
+  if (!form.userAccount.trim()) {
+    uni.showToast({
+      title: '请输入学号',
+      icon: 'error'
+    })
+    return false
+  }
+
+  if (!form.userName.trim()) {
+    uni.showToast({
+      title: '请输入姓名',
+      icon: 'error'
+    })
+    return false
+  }
+
+  return true
+}
 
 // 添加用户
 const handleAdd = () => {
@@ -557,7 +619,7 @@ const handleAdd = () => {
     userAccount: '',
     userName: '',
     uploadAble: 0,
-    checkAble: 0,
+    checkAble: 1,
     groupDetails: [],
     phone: '',
   })
@@ -571,12 +633,11 @@ const getSubjectList = async () => {
     const res = await subjectApi.getSubjectList()
     subjectList.value = res.map(item => ({
       value: item.id,
-      text: item.title
+      text: item.title + " - " + item.grade
     }))
   } catch (error) {
-    console.error(error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'error'
     })
   }
@@ -585,19 +646,16 @@ const getSubjectList = async () => {
 
 // 表单提交
 const handleSubmit = async () => {
-  if (!form.userName || !form.userAccount) {
-    uni.showToast({
-      title: '请填写必填信息',
-      icon: 'error'
-    })
+  if (!validateForm()) {
     return
   }
-
   try {
     saving.value = true
 
     const submitData = {
-      ...form
+      ...form,
+      checkAble: form.checkAble || 1,  // 如果未设置，默认为1
+      uploadAble: form.uploadAble || 0  // 如果未设置，默认为0
     }
 
     await studentApi.addOrUpdateStudent(submitData)
@@ -617,25 +675,6 @@ const handleSubmit = async () => {
   } finally {
     saving.value = false
   }
-}
-
-
-// 添加分组
-const addGroup = () => {
-  if (!form.groupDetails) {
-    form.groupDetails = []
-  }
-  form.groupDetails.push({
-    subjectId: undefined,
-    subjectName: '',
-    groupNum: undefined,
-    subjectStudentId: undefined
-  })
-}
-
-// 删除分组
-const removeGroup = (index: number) => {
-  form.groupDetails?.splice(index, 1)
 }
 
 // 修改编辑表单初始化
@@ -678,7 +717,6 @@ const handleDelete = async (student: StudentVO) => {
     // 刷新列表
     getStudentList()
   } catch (error: any) {
-    console.error(error)
     uni.showToast({
       title: error.message || '删除失败',
       icon: 'error'
@@ -688,6 +726,9 @@ const handleDelete = async (student: StudentVO) => {
 
 const handleClose = () => {
   popupRef.value?.close()
+  newGroup.subjectId = ''
+  newGroup.groupNum = ''
+  newGroup.subjectName = ''
 }
 
 const handlePrevPage = () => {
@@ -697,13 +738,6 @@ const handlePrevPage = () => {
   }
 }
 
-const handleSubjectChange = (value: number, index: number) => {
-  const subject = subjectList.value.find(item => item.value === value)
-  if (subject && form.groupDetails[index]) {
-    form.groupDetails[index].subjectId = value
-    form.groupDetails[index].subjectName = subject.text
-  }
-}
 
 const handleNextPage = () => {
   if (current.value * pageSize.value < total.value) {
@@ -786,7 +820,7 @@ onBeforeUnmount(() => {
   .table-header,
   .table-row {
     display: grid;
-    grid-template-columns: 2fr 2fr 2fr 1fr 1fr 2fr;
+    grid-template-columns: 2fr 2fr 2fr 1fr 1fr minmax(300px, 4fr);
     padding: 12px 16px;
     align-items: center;
     text-align: center;
@@ -795,6 +829,7 @@ onBeforeUnmount(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 0;
     }
   }
 
@@ -836,11 +871,10 @@ onBeforeUnmount(() => {
             }
           }
 
-          &.edit {
-            color: #409eff;
-
+          &.edit {  // 编辑按钮改为绿色
+            color: #67C23A;
             &:hover {
-              background-color: #ecf5ff;
+              background-color: #f0f9eb;
             }
           }
 
@@ -1385,7 +1419,7 @@ onBeforeUnmount(() => {
 
       .permission-col {
         justify-content: flex-start;
-        padding-left: 80px;
+        //padding-left: 80px;
 
         .permission-tag {
           padding: 2px 8px;
@@ -1567,5 +1601,93 @@ onBeforeUnmount(() => {
   }
 }
 /* #endif */
+.form-item {
+  .label {
+    .required {
+      color: #f56c6c;
+      margin-left: 4px;
+    }
+  }
+}
 
+// 修改 PC 端样式
+.action-col {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap; // 允许按钮换行
+  gap: 8px; // 减小按钮间距
+  padding: 0 4px; // 增加一些内边距
+
+  .action-btn {
+    min-width: 56px; // 设置最小宽度
+    padding: 4px 8px;
+    white-space: nowrap; // 防止文字换行
+    font-size: 13px; // 稍微缩小字体
+    flex-shrink: 0;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+    text-align: center;
+
+    &.info {
+      color: #409eff;
+      &:hover { background-color: #ecf5ff; }
+    }
+
+    &.edit {
+      color: #409eff;
+      &:hover { background-color: #ecf5ff; }
+    }
+
+    &.reset {
+      color: #E6A23C;
+      &:hover { background-color: #fdf6ec; }
+    }
+
+    &.delete {
+      color: #f56c6c;
+      &:hover { background-color: #fef0f0; }
+    }
+  }
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .table-row {
+    .action-col {
+      flex-wrap: wrap; // 允许按钮换行
+      gap: 8px;
+      justify-content: flex-end;
+      padding-top: 12px;
+
+      .action-btn {
+        min-width: calc(50% - 4px); // 每行两个按钮
+        text-align: center;
+        padding: 8px;
+        font-size: 14px;
+        white-space: nowrap;
+
+        &.info {
+          background: #ecf5ff;
+          color: #409eff;
+        }
+
+        &.edit {
+          background: #f0f9eb;
+          color: #67c23a;
+        }
+
+        &.reset {
+          background: #fdf6ec;
+          color: #E6A23C;
+        }
+
+        &.delete {
+          background: #fef0f0;
+          color: #f56c6c;
+        }
+      }
+    }
+  }
+}
 </style>

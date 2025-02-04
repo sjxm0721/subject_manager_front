@@ -219,9 +219,8 @@ const getSubjectList = async () => {
     subjectList.value = res.records
     total.value = res.total
   } catch (error) {
-    console.error('获取课程列表失败:', error)
     uni.showToast({
-      title: '获取课程列表失败',
+      title: error?.message || '获取课程列表失败',
       icon: 'none'
     })
   }
@@ -306,7 +305,6 @@ const handleSubmit = async () => {
       endTime: formData.value.endTime
     }
 
-    console.log("submitData",submitData)
 
     await subjectApi.addOrUpdateSubject(submitData)
 
@@ -317,7 +315,6 @@ const handleSubmit = async () => {
       icon: 'success'
     })
   } catch (error) {
-    console.error('提交失败:', error)
     uni.showToast({
       title: error.message || '提交失败',
       icon: 'none'

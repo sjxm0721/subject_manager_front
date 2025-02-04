@@ -102,7 +102,7 @@ const handleSave = async () => {
     await userStore.getCurrentUser()
   } catch (error: any) {
     uni.showToast({
-      title: error.message || '保存失败',
+      title: error?.message || '保存失败',
       icon: 'error'
     })
   } finally {

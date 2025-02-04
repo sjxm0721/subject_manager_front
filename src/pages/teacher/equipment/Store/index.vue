@@ -150,9 +150,8 @@ const handleSelectImage = async () => {
       await uploadFile('image', res.tempFilePaths[0])
     }
   } catch (error) {
-    console.error('选择图片失败：', error)
     uni.showToast({
-      title: '选择图片失败',
+      title: error?.message || '选择图片失败',
       icon: 'none'
     })
   }
@@ -200,7 +199,6 @@ const handleSelectFile = async () => {
           throw new Error('上传失败')
         }
       } catch (error: any) {
-        console.error('文档上传失败：', error)
         uni.showToast({
           title: error.message || '上传失败',
           icon: 'none'
@@ -228,9 +226,8 @@ const handleSelectFile = async () => {
       await uploadFile('file', res.tempFiles[0].path)
     }
   } catch (error) {
-    console.error('选择文件失败：', error)
     uni.showToast({
-      title: '选择文件失败',
+      title: error?.message || '选择文件失败',
       icon: 'none'
     })
   }
@@ -252,9 +249,8 @@ const handleSelectFileMP = async () => {
       await uploadFile('file', res.tempFiles[0])
     }
   } catch (error) {
-    console.error('选择文件失败：', error)
     uni.showToast({
-      title: '选择文件失败',
+      title: error?.message || '选择文件失败',
       icon: 'none'
     })
   }
@@ -296,7 +292,6 @@ const uploadFile = async (type: 'image' | 'file', file: any) => {
       throw new Error('上传失败')
     }
   } catch (error: any) {
-    console.error('上传失败：', error)
     uni.showToast({
       title: error.message || '上传失败',
       icon: 'none'
@@ -348,7 +343,6 @@ const handleSubmit = async () => {
       totalNum: Number(formData.totalNum)
     }
 
-    console.log(submitData,"1111")
 
     await deviceApi.storeDevice(submitData)
     uni.showToast({
@@ -357,9 +351,10 @@ const handleSubmit = async () => {
     })
 
     // 返回上一页
-    uni.navigateBack()
+    uni.redirectTo({
+      url: `/pages/main/index?path=${encodeURIComponent('/pages/teacher/equipment/Inventory/index')}`
+    })
   } catch (error: any) {
-    console.error('提交失败：', error)
     uni.showToast({
       title: error.message || '提交失败',
       icon: 'none'

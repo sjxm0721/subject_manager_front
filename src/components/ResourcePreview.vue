@@ -26,7 +26,7 @@
           </view>
 
           <view class="canvas-container" ref="canvasContainer">
-            <canvas id="pdfCanvas" v-show="canvasReady" type="2d"></canvas>
+            <canvas id="pdfCanvas"  v-show="canvasReady" type="2d"></canvas>
             <view v-if="!canvasReady" class="loading">加载中...</view>
             <view v-if="pdfError" class="error">{{ pdfError }}</view>
           </view>
@@ -52,7 +52,7 @@
     </view>
 
     <view class="footer">
-      <text>© {{ new Date().getFullYear() }} Resource Preview</text>
+      <text>© {{ new Date().getFullYear() }} 资源预览</text>
     </view>
   </view>
 </template>
@@ -62,7 +62,6 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { debounce } from 'lodash-es';
 import {renderAsync} from "docx-preview";
 
-const docHtml = ref<string>('');
 const docError = ref<string | null>(null);
 const docProgress = ref(0);
 const containerRef = ref<HTMLElement | null>(null);
@@ -202,6 +201,9 @@ const openInNative = () => {
   });
 };
 
+
+
+
 const previewPDFFile = async () => {
   if (!isH5Platform.value) {
     openInNative();
@@ -210,7 +212,7 @@ const previewPDFFile = async () => {
 
   try {
     // 动态导入 PDF.js
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await import("pdfjs-dist/build/pdf");
     pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf/pdf.worker.min.mjs';
 
     pdfError.value = null;
@@ -225,7 +227,7 @@ const previewPDFFile = async () => {
     // 加载PDF文档
     const loadingTask = pdfjsLib.getDocument({
       url: props.resource.path,
-      cMapUrl: '/static/pdf/cmaps/',
+      cMapUrl: new URL('/static/pdf/cmaps/', import.meta.url).href,
       cMapPacked: true
     });
 
@@ -298,6 +300,7 @@ const renderPDFPage = async (isInitial = false) => {
     pdfContext.fillStyle = 'white';
     pdfContext.fillRect(0, 0, viewport.width, viewport.height);
 
+
     renderTask = page.render({
       canvasContext: pdfContext,
       viewport: viewport,
@@ -341,6 +344,7 @@ const previewDocFile = async () => {
 
     const buffer = await response.arrayBuffer();
 
+
     if (!containerRef.value) {
       throw new Error('Container element not found');
     }
@@ -352,6 +356,9 @@ const previewDocFile = async () => {
     const defaultStyles = document.createElement('style');
     defaultStyles.textContent = `
       /* 默认样式 */
+	  .docx-viewer-wrapper{
+		  display: block !important;
+	  }
       .docx-viewer .Footnote-Text {
         font-size: 0.8em;
         color: #666;
@@ -399,12 +406,24 @@ const previewDocFile = async () => {
     const defaultOptions = {
       className: 'docx-viewer',
       inWrapper: true,
-      ignoreWidth: false,
+      ignoreWidth: true,
       ignoreHeight: false,
-      ignoreFonts: false,
+      pageMargins:{
+        top: 20,
+        right: 10,
+        bottom: 20,
+        left: 10
+      },
+      renderHeaders: true,
+      renderFooters: true,
+      renderFootnotes: true,
+      useBase64URL: false,
       breakPages: true,
+      experimental: false,
+      ignoreFonts: false,
+      trimXmlDeclaration: true,
+      ignoreLastRenderedPageBreak: true,
       debug: false,
-      experimental: true,
       defaultFont: {
         name: 'Arial',
         url: null
@@ -535,6 +554,7 @@ watch(scale, () => {
 .main {
   flex: 1;
   padding: 20rpx;
+  width: 100%;
 }
 
 .pdf-preview {
@@ -548,26 +568,41 @@ watch(scale, () => {
 .pdf-controls {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 20rpx;
-  padding: 20rpx;
+  justify-content: space-between; /* 改为 space-between 布局 */
+  flex-wrap: nowrap; /* 防止换行 */
+  padding: 12rpx 16rpx;
   background-color: #f8f9fa;
   border-radius: 4rpx;
   position: sticky;
   top: 0;
   z-index: 10;
+  min-height: 48rpx;
 }
 
+.pdf-controls button{
+	 white-space: nowrap; /* 防止按钮文字换行 */
+	  min-width: 80rpx;
+	  padding: 0 16rpx;
+	  font-size: 24rpx;
+	  height: 48rpx;
+	  line-height: 48rpx;
+}
+
+
+
 .scale-select {
-  padding: 8rpx;
-  border: 1px solid #ddd;
-  border-radius: 4rpx;
-  background-color: white;
+  width: auto;
+  padding: 0 8rpx;
+  height: 48rpx;
+  font-size: 24rpx;
 }
 
 .page-info {
-  min-width: 120rpx;
+  flex: 0 1 auto; /* 允许收缩但不伸展 */
   text-align: center;
+  margin: 0 8rpx;
+  font-size: 24rpx;
+  white-space: nowrap;
 }
 
 .canvas-container {
@@ -603,14 +638,6 @@ watch(scale, () => {
   color: #dc3545;
 }
 
-.doc-preview {
-  width: 100%;
-  padding: 20rpx;
-  background-color: #fff;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 4rpx;
-  min-height: 800rpx;
-}
 
 .doc-content {
   line-height: 1.6;
@@ -628,14 +655,13 @@ watch(scale, () => {
 #pdfCanvas {
   display: block;
   background-color: white;
-  margin: 0 auto;
   max-width: 100%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .canvas-container {
   display: flex;
-  justify-content: center;
+  //justify-content: center;
   align-items: flex-start;
   overflow-x: auto;
   overflow-y: auto;
@@ -727,6 +753,44 @@ watch(scale, () => {
   display: block;
 }
 
+.docx-viewer-wrapper {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+}
+
+
+.docx-container {
+  width: 100%;
+  min-height: 800rpx;
+  background: #fff;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+}
+
+.docx-viewer .page {
+  width: auto !important;
+  min-width: 100%;
+  max-width: none !important;
+  margin: 0 auto 20px;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-x: visible;
+}
+
+
+.docx-viewer table {
+  max-width: 100%;
+  width: auto !important;
+  table-layout: auto;
+  overflow-x: auto;
+  display: block;
+}
+
 
 
 .loading-container {
@@ -783,16 +847,20 @@ watch(scale, () => {
   background: #fff;
   overflow: auto;
   position: relative;
+  /* 添加内边距确保内容不会贴边 */
+  padding: 0 20rpx;
+  box-sizing: border-box;
 }
 
-/* 基础文档样式 */
-.docx-viewer {
-  padding: 20px;
-  background: #fff;
-  font-family: "Arial", sans-serif;
-  color: #333;
-  line-height: 1.5;
-  word-wrap: break-word;
+
+.doc-preview {
+  width: 100%;
+  padding: 0; /* 移除原有的内边距 */
+  background-color: #fff;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 4rpx;
+  min-height: 1000rpx;
+  overflow-x: auto; /* 添加横向滚动 */
 }
 
 /* 页面样式 */
@@ -800,8 +868,9 @@ watch(scale, () => {
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin: 0 auto 20px;
-  padding: 40px;
-  max-width: 816px;
+  padding: 20px;
+  width: 100%;
+  min-width: fit-content;
   box-sizing: border-box;
 }
 
@@ -890,12 +959,6 @@ watch(scale, () => {
   text-decoration: underline;
 }
 
-/* 表格容器样式 */
-.table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  margin: 10px 0;
-}
 
 /* 响应式调整 */
 @media screen and (max-width: 768px) {
@@ -999,4 +1062,28 @@ watch(scale, () => {
   border-radius: 8rpx;
   margin: 20rpx;
 }
+
+
+@media screen and (max-width: 768px) {
+  .docx-viewer {
+    padding: 10px;
+  }
+
+  .docx-container {
+    padding: 0 10rpx;
+  }
+
+  /* 确保表格可以横向滚动 */
+  .docx-viewer table {
+    min-width: fit-content;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .pdf-controls {
+    gap: 8rpx; /* 减小间距 */
+  }
+}
+
+
 </style>

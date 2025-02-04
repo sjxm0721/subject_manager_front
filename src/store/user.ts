@@ -68,7 +68,8 @@ export const useUserStore = defineStore('user', {
       try {
         const res = await userApi.login({
           userAccount: loginForm.userAccount,
-          userPassword: loginForm.userPassword
+          userPassword: loginForm.userPassword,
+          captchaToken: loginForm.captchaToken
         })
 
         this.token = res.token
@@ -88,9 +89,12 @@ export const useUserStore = defineStore('user', {
         storage.set(TOKEN_KEY, res.token)
         storage.set(USER_INFO_KEY, JSON.stringify(this.userInfo))
 
+        // 在登录成功后
+        const LAST_PATH_KEY = 'last_visited_path'
+        localStorage.removeItem(LAST_PATH_KEY)
+
         return res
       } catch (error) {
-        console.log(error)
         throw new Error('登录失败：' + error.message)
       }
     },
