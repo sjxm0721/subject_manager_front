@@ -150,7 +150,7 @@
           "style": {
             "navigationBarTitleText": "历年作品",
             "navigationStyle": "custom",
-            "enablePullDownRefresh": false
+            "enablePullDownRefresh": true
           }
         },
         {

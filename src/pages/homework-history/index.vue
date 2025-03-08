@@ -1,9 +1,15 @@
 <template>
-    <view class="homework-list">
       <scroll-view
+          class="homework-list"
           scroll-y
+          refresher-enabled
+          :refresher-triggered="isRefreshing"
+          :refresher-threshold="45"
+          refresher-background="#f8f9fa"
+          @refresherrefresh="onRefresh"
+          @refresherpulling="onPulling"
+          @refresherrestore="onRestore"
           @scrolltolower="onScrollToLower"
-          class="list-scroll"
       >
         <view class="list-content">
           <!-- 列表项 -->
@@ -92,7 +98,6 @@
           </view>
         </view>
       </scroll-view>
-    </view>
 </template>
 
 <script setup lang="ts">
@@ -101,6 +106,7 @@ import { useUserStore } from '@/store/user';
 import { homeworkApi } from '@/api/homework';
 import type { HomeworkHistoryVO, HomeworkHistoryPageQueryRequest } from '@/types/homework';
 import Layout from "@/components/layout/Layout.vue";
+import {onPullDownRefresh} from "@dcloudio/uni-app";
 
 const props = defineProps<{
   year?: number;
@@ -112,7 +118,7 @@ const isTeacher = ref(userStore.userInfo?.userRole === 2);
 // 窗口宽度响应式
 const windowWidth = ref(uni.getSystemInfoSync().windowWidth);
 const isMobile = computed(() => windowWidth.value <= 768);
-
+const isRefreshing = ref(false);
 
 // 列表数据
 const homeworkList = ref<HomeworkHistoryVO[]>([]);
@@ -121,12 +127,31 @@ const finished = ref(false);
 const current = ref(1);
 const pageSize = ref(10);
 
+const pullState = ref('');
+
+// 添加下拉相关的处理方法
+const onPulling = (e: any) => {
+  if (e.detail.dy > 0) {
+    pullState.value = '下拉刷新';
+  }
+  if (e.detail.dy >= 45) {
+    pullState.value = '松开刷新';
+  }
+};
+
+const onRestore = () => {
+  pullState.value = '';
+};
+
 // 重置列表状态
-const resetListState = () => {
-  homeworkList.value = [];
-  current.value = 1;
-  finished.value = false;
-  loading.value = false;
+const resetListState = async () => {
+  return new Promise<void>((resolve) => {
+    homeworkList.value = [];
+    current.value = 1;
+    finished.value = false;
+    loading.value = false;
+    resolve();
+  });
 };
 
 
@@ -160,6 +185,29 @@ const getHomeworkList = async () => {
   }
 };
 
+const onRefresh = async () => {
+  if (isRefreshing.value) return;
+
+  isRefreshing.value = true;
+  pullState.value = '正在刷新';
+
+  try {
+    await resetListState();
+    await getHomeworkList();
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success'
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error?.message || '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    isRefreshing.value = false;
+    pullState.value = '';
+  }
+};
 
 
 watch(() => props.year, (newYear) => {
@@ -168,8 +216,11 @@ watch(() => props.year, (newYear) => {
 }, { immediate: true });
 
 // 监听滚动加载更多
-const onScrollToLower = () => {
-  getHomeworkList();
+const onScrollToLower = async () => {
+  console.log(111)
+  if (!loading.value && !finished.value) {
+    await getHomeworkList();
+  }
 };
 
 //监听窗口变化
@@ -184,15 +235,30 @@ const handleResize = () => {
   // #endif
 };
 
+onPullDownRefresh(() => {
+  onRefresh().finally(() => {
+    uni.stopPullDownRefresh();
+  });
+});
+
 onMounted(() => {
   // #ifdef H5
   window.addEventListener('resize', handleResize);
+  // #endif
+
+  // #ifdef MP-WEIXIN || APP-PLUS
+  uni.enablePullDownRefresh();
   // #endif
 });
 
 onBeforeUnmount(() => {
   // #ifdef H5
   window.removeEventListener('resize', handleResize);
+  // #endif
+
+  // #ifdef MP-WEIXIN || APP-PLUS
+  // 只在小程序和 APP 中禁用页面下拉刷新
+  uni.disablePullDownRefresh();
   // #endif
 });
 
@@ -226,11 +292,60 @@ const handleRecommendChange = async (homework: HomeworkHistoryVO, value: boolean
 
 <style lang="scss">
 .homework-list {
-  height: 100%;
+  height: 100vh;
   background: #f8f9fa;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   .list-scroll {
     height: 100%;
+
+    ::-webkit-scrollbar {
+      display: none;  // 隐藏内部滚动条
+    }
+
+    :deep(.uni-scroll-view-refresher) {
+      min-height: 45px;
+      line-height: 45px;
+      background-color: #f8f9fa;
+
+      .uni-scroll-view-refresh__spinner {
+        display: none !important;  // 隐藏默认的刷新圆圈
+      }
+
+      .uni-scroll-view-refresh {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 14px;
+      }
+
+      .refresh-text {
+        position: relative;
+        z-index: 1;
+      }
+    }
+  }
+
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .refresh-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    border: 2px solid #999;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: rotate 0.8s linear infinite;
   }
 
   .list-content {

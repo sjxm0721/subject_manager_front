@@ -218,6 +218,11 @@ import Layout from "@/components/layout/Layout.vue";
 import {useUserStore} from "@/store/user";
 import {homeworkApi} from "@/api/homework";
 
+//缓存
+import {cacheService} from "@/utils/cacheService";
+const autoSaveTimer = ref<number>()
+
+
 // 类型定义
 
 interface Subject {
@@ -255,10 +260,10 @@ interface FileList {
 
 // 上传配置
 const uploadConfig = {
-  word: { label: 'WORD文档', accept: '.docx' },
-  pdf: { label: 'PDF文档', accept: '.pdf' },
-  source: { label: '源文件', accept: '.zip,.rar,.7z' },
-  mp4: { label: 'MP4演示视频', accept: '.mp4' }
+  word: { label: 'WORD文档(.docx)', accept: '.docx' },
+  pdf: { label: 'PDF文档(.pdf)', accept: '.pdf' },
+  source: { label: '源文件(.zip,.rar,.7z)', accept: '.zip,.rar,.7z' },
+  mp4: { label: 'MP4演示视频(.mp4)', accept: '.mp4' }
 }
 
 // 添加上传进度的接口定义
@@ -534,11 +539,13 @@ const getSubjectList = async () => {
       value: item.id,
       text: item.title
     }))
+    return true
   } catch (error) {
     uni.showToast({
       title: error?.message || '获取课程列表失败',
       icon: 'error'
     })
+    return false
   }
 }
 
@@ -554,7 +561,6 @@ const handleTypeChange = (e: any) => {
 }
 
 
-// 更新 handleSelectFile 方法
 const handleSelectFile = (type: keyof FileList) => {
   // #ifdef H5 || APP-PLUS
   const inputElement = document.createElement('input');
@@ -565,7 +571,11 @@ const handleSelectFile = (type: keyof FileList) => {
   inputElement.onchange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (target.files?.length) {
-      handleFileUpload(type, target.files[0]);
+      const file = target.files[0];
+      // 使用新的 checkFileType 检查文件类型和大小
+      if (checkFileType(type, file)) {
+        handleFileUpload(type, file);
+      }
     }
   };
 
@@ -583,14 +593,20 @@ const handleSelectFileMP = async (type: keyof FileList) => {
       count: 1,
       type: 'file',
       extension: uploadConfig[type].accept.split(',')
-    })
+    });
+
     if (res.tempFiles?.length) {
-      handleFileUpload(type, res.tempFiles[0])
+      const file = res.tempFiles[0];
+      // 使用新的 checkFileType 检查文件类型和大小
+      if (checkFileType(type, file)) {
+        handleFileUpload(type, file);
+      }
     }
   } catch (error) {
+    console.error('选择文件失败:', error);
   }
   // #endif
-}
+};
 
 const handleFileChange = async (type: keyof FileList, e: Event) => {
   const target = e.target as HTMLInputElement
@@ -637,12 +653,80 @@ const handleFileChange = async (type: keyof FileList, e: Event) => {
     }
   }
 }
+
+
+
+const checkFileType = (type: keyof FileList, file: File | UniApp.ChooseFile) => {
+  const acceptMap = {
+    word: ['.docx'],
+    pdf: ['.pdf'],
+    source: ['.zip', '.rar', '.7z'],
+    mp4: ['.mp4']
+  };
+
+  const sizeMap = {
+    word: 10,
+    pdf: 10,
+    source: 50,
+    mp4: 300
+  };
+
+  const acceptExtensions = acceptMap[type];
+  const maxSize = sizeMap[type];
+
+  // 先判断文件对象是否有效
+  if (!file || !file.name) {
+    uni.showToast({
+      title: '文件无效',
+      icon: 'none',
+      duration: 2000
+    });
+    return false;
+  }
+
+  const fileName = file.name.toLowerCase();
+  const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+
+  // 检查文件类型
+  if (!acceptExtensions.includes(fileExtension)) {
+    uni.showToast({
+      title: `文件类型必须为${acceptExtensions.join('、')}`,
+      icon: 'none',
+      duration: 2000
+    });
+    return false;
+  }
+
+  // 检查文件大小
+  let fileSize;
+  if ('size' in file) {
+    fileSize = file.size / (1024 * 1024);
+  } else {
+    fileSize = 0; // 如果无法获取文件大小，默认为0
+  }
+
+  if (fileSize > maxSize) {
+    uni.showToast({
+      title: `文件大小不能超过${maxSize}MB`,
+      icon: 'none',
+      duration: 2000
+    });
+    return false;
+  }
+
+  return true;
+};
+
 const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | File) => {
+  // 再次验证文件类型（双重保险）
+  if (!checkFileType(type, file)) {
+    return;
+  }
+
   uploading.value = true;
   // 重置进度
   uploadProgress[type] = 0;
 
-  // 模拟进度增长
   const progressInterval = setInterval(() => {
     if (uploadProgress[type] < 90) {
       uploadProgress[type] += Math.random() * 10;
@@ -658,7 +742,7 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
     }
     // #endif
 
-    // #ifdef MP-WEIXIN
+    // #ifdef MP-WEIXIN || APP-PLUS
     if('path' in file) {
       formData.append('file', file);
     }
@@ -670,6 +754,7 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
       header: {
         'token': userStore.token
       },
+	  timeout: 600000,
       // @ts-ignore
       file: file instanceof File ? file : undefined,
       filePath: 'path' in file ? file.path : undefined,
@@ -677,9 +762,7 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
         if(uploadRes.statusCode === 200) {
           const data = JSON.parse(uploadRes.data);
           if(data.code === 0) {
-            // 清除进度模拟定时器
             clearInterval(progressInterval);
-            // 设置为100%
             uploadProgress[type] = 100;
 
             fileList[type].push({
@@ -687,7 +770,6 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
               url: data.data
             });
 
-            // 上传成功后1秒清除进度条
             setTimeout(() => {
               uploadProgress[type] = 0;
             }, 1000);
@@ -707,7 +789,6 @@ const handleFileUpload = async (type: keyof FileList, file: UniApp.ChooseFile | 
         throw new Error('上传失败');
       }
     });
-
   } catch (error: any) {
     uni.showToast({
       title: error.message || '上传失败',
@@ -778,6 +859,9 @@ const handleSubmit = async () => {
 
     const res = await homeworkApi.addOrUpdateHomework(submitData)
     if (res) {
+      //提交成功后清理缓存
+      cacheService.clearCache()
+
       uni.showToast({
         title: '提交成功',
         icon: 'success'
@@ -818,6 +902,38 @@ const resetForm = () => {
   })
 }
 
+// 添加表单值变化的监听
+watch(
+    [
+      () => formData.title,
+      () => formData.background,
+      () => formData.systemDesign,
+      () => formData.brief,
+      () => formData.hardwareTech,
+      () => formData.softwareTech,
+      () => formData.subjectId,
+      () => formData.subjectType
+    ],
+    () => {
+      // 当表单内容发生变化时，保存到缓存
+      if (!props.homeworkId && !uploading.value) {
+        saveToCache()
+      }
+    },
+    { deep: true }
+)
+
+// 文件列表变化时也需要保存缓存
+watch(
+    fileList,
+    () => {
+      if (!props.homeworkId && !uploading.value) {
+        saveToCache()
+      }
+    },
+    { deep: true }
+)
+
 // 监听输入限制
 const handleInput = (field: keyof FormState, event: any) => {
   if (field === 'brief' && event.detail.value.length > 300) {
@@ -838,13 +954,37 @@ watch(() => formData.brief, (newVal) => {
   }
 })
 
-onMounted(() => {
-  getSubjectList()
+onMounted(async () => {
+  await getSubjectList()
+
+  // 如果是编辑模式(有homeworkId)，则不加载缓存
+  if (!props.homeworkId) {
+    const hasDraft = cacheService.hasDraft()
+    if (hasDraft) {
+      uni.showModal({
+        title: '提示',
+        content: '检测到上次未提交的内容，是否恢复？',
+        success: (res) => {
+          if (res.confirm) {
+            loadFromCache()
+          } else {
+            cacheService.clearCache()
+          }
+        }
+      })
+    }
+  }
+
+  // 启动自动保存
+  startAutoSave()
 })
 
 
 // 组件卸载时清理编辑器实例
 onUnmounted(() => {
+  if (autoSaveTimer.value) {
+    clearInterval(autoSaveTimer.value)
+  }
   // 在小程序环境下可能需要清理编辑器实例
   // #ifdef MP-WEIXIN
   editorCtx.background = null;
@@ -852,6 +992,44 @@ onUnmounted(() => {
   // #endif
   emit('update:homeworkId', '') // 清空 homeworkId
 });
+
+//加载缓存数据
+const loadFromCache = () => {
+  const cachedData = cacheService.loadFormFromCache()
+  if (cachedData) {
+    // 恢复表单数据
+    Object.assign(formData, cachedData.formData)
+
+    // 恢复文件列表
+    Object.keys(cachedData.fileList).forEach(key => {
+      fileList[key as keyof FileList] = cachedData.fileList[key as keyof FileList]
+    })
+
+    uni.showToast({
+      title: '已恢复未保存的内容',
+      icon: 'success'
+    })
+  }
+}
+
+// 开始自动保存
+const startAutoSave = () => {
+  // 每30秒自动保存一次
+  autoSaveTimer.value = setInterval(() => {
+    if (!props.homeworkId && !uploading.value) { // 非编辑模式且非上传状态才自动保存
+      saveToCache()
+    }
+  }, 30000) as unknown as number
+}
+
+// 保存到缓存
+const saveToCache = () => {
+  if (formData.title || formData.background || formData.systemDesign) {
+    cacheService.saveFormToCache(formData, fileList)
+  }
+}
+
+
 
 </script>
 

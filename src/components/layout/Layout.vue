@@ -573,7 +573,7 @@ onBeforeUnmount(() => {
 
   .main-content {
     flex: 1;
-    padding: 24px;
+    padding: 0;
     background: #f0f2f5;
     transition: all 0.3s ease;
     overflow-y: auto;

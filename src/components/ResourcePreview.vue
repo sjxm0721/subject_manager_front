@@ -3,10 +3,16 @@
   <view class="resource-preview">
     <view class="header">
       <text class="title">{{ resource.name }}</text>
-      <button @tap="goBack" class="back-btn">返回</button>
+      <view class="header-actions">
+        <button @tap="downloadResource" class="download-btn">
+           下载
+        </button>
+        <button @tap="goBack" class="back-btn">返回</button>
+      </view>
     </view>
 
     <view class="main">
+
       <!-- PDF 预览 -->
       <block v-if="resource.type === 'pdf'">
         <view class="pdf-preview" v-if="isH5Platform">
@@ -201,6 +207,78 @@ const openInNative = () => {
   });
 };
 
+// 下载资源函数
+const downloadResource = () => {
+  // 处理不同平台的下载逻辑
+  if (isH5Platform.value) {
+    // Web端通过创建a标签进行下载
+    try {
+      const a = document.createElement('a');
+      a.href = props.resource.path;
+      a.download = props.resource.name || `download.${props.resource.type}`;
+
+      // 针对某些浏览器需要将元素添加到DOM以触发下载
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      uni.showToast({
+        title: '下载已开始',
+        icon: 'success'
+      });
+    } catch (error) {
+      console.error('下载文件失败:', error);
+      uni.showToast({
+        title: '下载失败',
+        icon: 'none'
+      });
+    }
+  } else {
+    // 移动端通过uni.downloadFile API下载
+    const downloadTask = uni.downloadFile({
+      url: props.resource.path,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          // 保存文件
+          uni.saveFile({
+            tempFilePath: res.tempFilePath,
+            success: (saveRes) => {
+              uni.showToast({
+                title: '保存成功',
+                icon: 'success'
+              });
+
+              // 打开文件管理器显示文件（仅Android支持）
+              if (systemInfo.platform === 'android') {
+                plus.runtime.openFile(saveRes.savedFilePath);
+              }
+            },
+            fail: (err) => {
+              console.error('保存文件失败:', err);
+              uni.showToast({
+                title: '保存失败',
+                icon: 'none'
+              });
+            }
+          });
+        }
+      },
+      fail: (err) => {
+        console.error('下载文件失败:', err);
+        uni.showToast({
+          title: '下载失败',
+          icon: 'none'
+        });
+      }
+    });
+
+    // 监听下载进度
+    downloadTask.onProgressUpdate((res) => {
+      console.log('下载进度:', res.progress);
+      // 这里可以添加下载进度条的更新逻辑
+    });
+  }
+};
 
 
 
@@ -212,8 +290,8 @@ const previewPDFFile = async () => {
 
   try {
     // 动态导入 PDF.js
-    const pdfjsLib = await import("pdfjs-dist/build/pdf");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf/pdf.worker.min.mjs';
+    const pdfjsLib = await import("https://cdn.jsdmirror.com/npm/pdfjs-dist@4.9.155/build/pdf.min.mjs");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdmirror.com/npm/pdfjs-dist@4.9.155/build/pdf.worker.min.mjs';
 
     pdfError.value = null;
     canvasReady.value = false;
@@ -227,7 +305,7 @@ const previewPDFFile = async () => {
     // 加载PDF文档
     const loadingTask = pdfjsLib.getDocument({
       url: props.resource.path,
-      cMapUrl: new URL('/static/pdf/cmaps/', import.meta.url).href,
+      cMapUrl: 'https://cdn.jsdmirror.com/npm/pdfjs-dist@4.9.155/cmaps/',
       cMapPacked: true
     });
 
@@ -536,11 +614,22 @@ watch(scale, () => {
   align-items: center;
   padding: 20rpx;
   background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .title {
   font-size: 32rpx;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .back-btn {
@@ -549,6 +638,26 @@ watch(scale, () => {
   background-color: #4a90e2;
   color: white;
   border-radius: 4rpx;
+  min-width: 80rpx;
+  text-align: center;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10rpx 20rpx;
+  font-size: 28rpx;
+  background-color: #28a745;
+  color: white;
+  border-radius: 4rpx;
+  gap: 8rpx;
+  min-width: 80rpx;
+}
+
+.download-icon {
+  font-size: 28rpx;
+  font-weight: bold;
 }
 
 .main {
@@ -580,12 +689,12 @@ watch(scale, () => {
 }
 
 .pdf-controls button{
-	 white-space: nowrap; /* 防止按钮文字换行 */
-	  min-width: 80rpx;
-	  padding: 0 16rpx;
-	  font-size: 24rpx;
-	  height: 48rpx;
-	  line-height: 48rpx;
+  white-space: nowrap; /* 防止按钮文字换行 */
+  min-width: 80rpx;
+  padding: 0 16rpx;
+  font-size: 24rpx;
+  height: 48rpx;
+  line-height: 48rpx;
 }
 
 
@@ -621,6 +730,7 @@ watch(scale, () => {
   justify-content: center;
   align-items: center;
   padding: 40rpx;
+  gap: 16rpx; /* 添加按钮之间的间距 */
 }
 
 .loading,
@@ -672,11 +782,27 @@ watch(scale, () => {
 @media screen and (min-width: 768px) {
   .title {
     font-size: 24px;
+    max-width: 70%;
+  }
+
+  .header {
+    padding: 12px 24px;
+  }
+
+  .header-actions {
+    gap: 16px;
   }
 
   .back-btn {
-    padding: 10px 20px;
+    padding: 8px 20px;
     font-size: 16px;
+    min-width: 100px;
+  }
+
+  .download-btn {
+    padding: 8px 20px;
+    font-size: 16px;
+    min-width: 120px;
   }
 
   .canvas-container,
@@ -1083,7 +1209,25 @@ watch(scale, () => {
   .pdf-controls {
     gap: 8rpx; /* 减小间距 */
   }
+
+  /* 移动端按钮调整 */
+  .header-actions {
+    gap: 8rpx;
+  }
+
+  .back-btn,
+  .download-btn {
+    font-size: 24rpx;
+    padding: 8rpx 16rpx;
+    min-width: 64rpx;
+  }
+
+  .download-btn {
+    font-size: 24rpx;
+  }
+
+  .title {
+    max-width: 50%;
+  }
 }
-
-
 </style>

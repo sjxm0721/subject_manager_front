@@ -44,7 +44,7 @@
 				<view class="th">批改情况</view>
 			</view>
 
-			<scroll-view scroll-y class="table-body" @scrolltolower="handleLoadMore">
+			<view class="table-body">
 				<view v-for="item in homeworkList" :key="item.id" class="table-row">
 					<view class="td">{{ item.grade }}</view>
 					<view class="td">{{ item.subjectName }}</view>
@@ -81,7 +81,7 @@
 						</template>
 					</view>
 				</view>
-			</scroll-view>
+			</view>
 		</view>
 		<!-- #endif -->
 
@@ -616,18 +616,19 @@
 		}
 	}
 
-	const handlePageChange = async (page : number) => {
-		if (page < 1 || page > totalPages.value) return
-		searchParams.current = page
-		inputPage.value = page.toString()
-		await fetchHomeworkList()
-	}
+  const handlePageChange = async (page: number) => {
+    if (page < 1 || page > totalPages.value || loading.value) return
+    if (page === searchParams.current) return  // 添加此行，避免重复加载相同页码
+    loading.value = true
+    try {
+      searchParams.current = page
+      inputPage.value = page.toString()
+      await fetchHomeworkList()
+    } finally {
+      loading.value = false
+    }
+  }
 
-	const handleLoadMore = () => {
-		if (searchParams.current < totalPages.value && !loading.value) {
-			handlePageChange(searchParams.current + 1)
-		}
-	}
 
 	// 详情相关方法
 	const showDetails = (item : HomeworkVO) => {
@@ -830,6 +831,20 @@
 
 			.table-body {
 				max-height: calc(100vh - 280px);
+        overflow-y: auto;
+
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background-color: #dcdfe6;
+          border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background-color: #f5f7fa;
+        }
 
 				.table-row {
 					display: grid;

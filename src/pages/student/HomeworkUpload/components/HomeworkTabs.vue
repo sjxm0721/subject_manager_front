@@ -386,11 +386,15 @@ onMounted(() => {
         font-weight: 500;
         color: #606266;
         font-size: 14px;
+        // 添加文本对齐
+        padding: 0 12px;
+        text-align: center;
       }
     }
 
     .list-item {
       display: grid;
+      // 保持与表头相同的列宽比例
       grid-template-columns: 2fr 1fr 2fr 1fr 1fr;
       padding: 12px;
       border-bottom: 1px solid #ebeef5;
@@ -405,6 +409,9 @@ onMounted(() => {
         color: #606266;
         display: flex;
         align-items: center;
+		@media screen and (min-width: 768px) {
+			justify-content: center;
+		}
 
         &.status {
           &.status-corrected {

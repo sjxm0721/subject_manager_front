@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
 
 <style lang="scss">
 .inventory-container {
-  height: 100%;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;

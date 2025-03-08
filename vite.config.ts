@@ -9,6 +9,7 @@ const __dirname = resolve(__filenameNew, '..');
 export default defineConfig({
 	optimizeDeps: {
 		include: ['docx-preview', 'jszip']
+
 	},
 	build: {
 		commonjsOptions: {
